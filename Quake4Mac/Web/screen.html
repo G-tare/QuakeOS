@@ -1,0 +1,161 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #060608;
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif; }
+
+  /* Dark screen + near-black cells (their #2f2f2f reads as grey, so matching the device's
+     actual dark appearance). Cells are defined by a faint border + shadow, not a grey fill. */
+  #bg { position: fixed; inset: 0; z-index: 0; background: #0c0c0d; }
+
+  /* Page dots. */
+  #dots { position: fixed; top: 7px; left: 0; right: 0; z-index: 3; display: flex; gap: 6px;
+    justify-content: center; pointer-events: none; }
+  #dots i { width: 6px; height: 6px; border-radius: 50%; background: hsla(0,0%,100%,.22); }
+  #dots i.on { background: #fff; }
+
+  /* Key grid. */
+  #grid { position: fixed; inset: 0; z-index: 2; display: grid;
+    grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(2, 1fr);
+    gap: 8px; padding: 14px; box-sizing: border-box; }
+
+  /* DecoKee commonBaseTheme tile — their EXACT two SVG layers, recovered from the
+     DK-Suite source map (UnitControl.vue + unitControlThemes.js):
+       • cover layer = two accent-colour blobs blurred 32px (bottom ellipse pool
+         rising from below + a circle behind the icon at 0.6 opacity)
+       • bg layer    = black rounded panel with a diagonal accent→#3A3A3A→#252525
+         border stroke + fractal-noise grain
+     Both recoloured per icon to --accent (sampled icon colour); set in JS as
+     background-image (cover on top, bg behind). cellSize 220, iconSize 108,
+     radius 48, icon at translateY(16.67%). */
+  .key { position: relative; overflow: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border-radius: 46px;
+    background: #0d0d0f;                    /* fallback so a tile is never invisible */
+    cursor: pointer; transition: transform .12s ease; }
+  /* Inline SVG layers (WebKit renders filters here, unlike background-image SVGs). */
+  .key .layers { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+  .key .layers svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .key .lbl { position: absolute; top: 12px; left: 0; right: 0;
+    color: hsla(0,0%,100%,.96); font-size: 23px; font-weight: 500; letter-spacing: .2px;
+    text-align: center; text-shadow: 0 1px 3px rgba(0,0,0,.7); z-index: 3; line-height: 1.05; }
+  .key img { width: 110px; height: 110px; object-fit: contain; z-index: 2;
+    transform: translateY(16.67%); }       /* their common-base icon sits at 2/3 */
+  .key.app img { border-radius: 14px; }
+
+  /* Press — their exact active state: scale .98 + soft white halo. */
+  .key.pressed { transform: scale(.98); box-shadow: 0 0 20px rgba(255,255,255,.3); }
+
+  /* Empty cell: plain near-black, no layers. */
+  .key.empty { background: #0a0a0c; }
+</style>
+</head>
+<body>
+  <div id="bg"></div>
+  <div id="grid"></div>
+
+<script>
+  const model = { pages: [], page: 0 };
+  const grid = document.getElementById('grid');
+
+  // ---- DecoKee's exact commonBaseTheme layers, built as INLINE SVG (WebKit-safe).
+  // cover = two accent blobs blurred 32px (bottom ellipse + behind-icon circle);
+  // bg = black panel + diagonal accent→#3A3A3A→#252525 border stroke. uid keeps ids unique. ----
+  function coverSVG(uid, accent) {
+    return '<svg viewBox="0 0 220 220" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">'
+      + '<g clip-path="url(#cc' + uid + ')">'
+      + '<g filter="url(#c0' + uid + ')"><ellipse cx="110" cy="244" rx="44" ry="27" fill="' + accent + '"/></g>'
+      + '<g opacity="0.6" filter="url(#c1' + uid + ')"><circle cx="110" cy="129" r="44" fill="' + accent + '"/></g>'
+      + '</g><defs>'
+      + '<filter id="c0' + uid + '" x="2" y="153" width="216" height="182" filterUnits="userSpaceOnUse"><feGaussianBlur stdDeviation="32"/></filter>'
+      + '<filter id="c1' + uid + '" x="2" y="21" width="216" height="216" filterUnits="userSpaceOnUse"><feGaussianBlur stdDeviation="32"/></filter>'
+      + '<clipPath id="cc' + uid + '"><rect width="220" height="220" rx="48"/></clipPath>'
+      + '</defs></svg>';
+  }
+  function bgSVG(uid, accent) {
+    return '<svg viewBox="0 0 224 224" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">'
+      + '<g opacity="0.55">'
+      + '<rect x="2" y="2" width="220" height="220" rx="48" fill="black"/>'
+      + '<rect x="2" y="2" width="220" height="220" rx="48" stroke="url(#l' + uid + ')" stroke-width="3"/>'
+      + '</g><defs>'
+      + '<linearGradient id="l' + uid + '" x1="74.5" y1="-15" x2="222" y2="222" gradientUnits="userSpaceOnUse">'
+      + '<stop stop-color="' + accent + '"/><stop offset="0.478643" stop-color="#3A3A3A"/><stop offset="0.524498" stop-color="#252525"/>'
+      + '</linearGradient></defs></svg>';
+  }
+  function setLayers(el, accent) {
+    let lay = el.querySelector('.layers');
+    if (!lay) { lay = document.createElement('div'); lay.className = 'layers'; el.insertBefore(lay, el.firstChild); }
+    const uid = el.dataset.idx;
+    lay.innerHTML = bgSVG(uid, accent) + coverSVG(uid, accent);   // bg behind, glow on top
+  }
+
+  // Sample each icon's dominant colour → accent (their iconGlowColor); fallback #7480EF.
+  const accentCache = {};
+  function applyAccent(el, img) {
+    const src = img.currentSrc || img.src;
+    let hex = accentCache[src];
+    if (!hex) {
+      try {
+        const w = img.naturalWidth, h = img.naturalHeight; if (!w || !h) return;
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
+        const d = ctx.getImageData(0, 0, w, h).data;
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let i = 0; i < d.length; i += 4) {
+          if (d[i + 3] < 40) continue;
+          if (d[i] + d[i + 1] + d[i + 2] < 24) continue;   // skip near-black AA fringe
+          r += d[i]; g += d[i + 1]; b += d[i + 2]; n++;
+        }
+        if (!n) { r = 116; g = 128; b = 239; n = 1; }
+        r = Math.round(r / n); g = Math.round(g / n); b = Math.round(b / n);
+        const mx = Math.max(r, g, b) || 1, boost = Math.min(1.3, 205 / mx);
+        const to2 = v => Math.min(255, Math.round(v * boost)).toString(16).padStart(2, '0');
+        hex = '#' + to2(r) + to2(g) + to2(b);
+        accentCache[src] = hex;
+      } catch (e) { hex = '#7480EF'; }
+    }
+    setLayers(el, hex);
+  }
+
+  function render() {
+    const p = model.pages[model.page] || { keys: [] };
+    grid.innerHTML = '';
+    for (let i = 0; i < 16; i++) {
+      const k = p.keys[i];
+      const el = document.createElement('div');
+      el.className = 'key ' + (k ? (k.app ? 'app' : 'neon') : 'empty');
+      el.dataset.idx = i;
+      if (k) {
+        setLayers(el, '#7480EF');                           // default until icon samples
+        const l = document.createElement('div'); l.className = 'lbl'; l.textContent = k.title || '';
+        el.appendChild(l);                                  // label pinned at TOP
+        if (k.icon) {
+          const im = document.createElement('img'); im.src = k.icon;
+          im.onload = function () { applyAccent(el, im); };
+          if (im.complete) applyAccent(el, im);
+          el.appendChild(im);
+        }
+      }
+      grid.appendChild(el);
+    }
+  }
+
+  window.QUAKE = {
+    setModel(j) { try { model.pages = (typeof j === 'string' ? JSON.parse(j) : j); } catch(e){} render(); },
+    setPage(i) { model.page = i; render(); },
+    press(i) { const e = grid.querySelector('.key[data-idx="' + i + '"]'); if (e) e.classList.add('pressed'); },
+    release() { grid.querySelectorAll('.key.pressed').forEach(e => e.classList.remove('pressed')); },
+    // Swap in a brand/favicon icon (full colour) for a tile once it's fetched.
+    setKeyIcon(page, idx, url, glow) {
+      var p = model.pages[page]; if (!p || !p.keys || !p.keys[idx]) return;
+      p.keys[idx].icon = url; p.keys[idx].app = true; if (glow) p.keys[idx].glow = glow;
+      if (page === model.page) render();
+    }
+  };
+  _diag('QUAKE ready — waiting for model');
+</script>
+</body>
+</html>

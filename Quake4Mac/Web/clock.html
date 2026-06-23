@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<!--
+  clock.html — Quake4Mac bundled "Clock" panel.
+  Two layouts:
+   • single — one clock fills the panel (style: flip split-flap / digital / analog). Swiping the
+     panel calls window.CLOCK.flip(dir) to step through the configured zones; dots show position.
+   • grid   — all configured zones shown at once as analog faces (iPhone world-clock style) with
+     city + relative day/offset labels.
+  Driven in-page (requestAnimationFrame); Swift pushes config via window.CLOCK.set({...}).
+  Original implementation.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, initial-scale=1">
+<style>
+  :root{ --bg:#050507; --card-top:#1b1b22; --card-bot:#101015; --ink:#f3f4f8;
+    --accent:#7480EF; --muted:#7a7a88; --line:rgba(0,0,0,.55); }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:1920px;height:480px;overflow:hidden;background:var(--bg);
+    font-family:-apple-system,"SF Pro Display","Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;color:var(--ink);}
+  #stage{width:100%;height:100%;display:flex;align-items:center;justify-content:center;}
+
+  /* single layout */
+  .single-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;width:100%;height:100%;}
+  .label{display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .label .city{font-size:46px;font-weight:700;color:var(--accent);text-shadow:0 0 18px rgba(116,128,239,.4);}
+  .label .date{font-size:30px;font-weight:600;color:var(--muted);}
+  .dots{display:flex;gap:12px;height:14px;}
+  .dots i{width:12px;height:12px;border-radius:50%;background:var(--muted);opacity:.4;}
+  .dots i.on{background:var(--accent);opacity:1;box-shadow:0 0 12px rgba(116,128,239,.6);}
+
+  .timerow{display:flex;align-items:center;gap:10px;line-height:1;}
+  .colon{display:flex;flex-direction:column;justify-content:center;gap:.22em;}
+  .colon span{width:.12em;height:.12em;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 .1em rgba(116,128,239,.6);animation:blink 1s steps(1) infinite;}
+  @keyframes blink{50%{opacity:.25;}}
+  .ampm{font-size:.18em;font-weight:700;color:var(--accent);align-self:flex-start;margin-left:.06em;letter-spacing:1px;}
+  .digital .seg{font-weight:700;font-variant-numeric:tabular-nums;}
+
+  /* flip */
+  .group{display:flex;gap:.06em;}
+  .digit{position:relative;border-radius:.1em;background:#15151b;font-weight:700;text-align:center;
+    box-shadow:0 .08em .18em rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.04);}
+  .digit .half{position:absolute;left:0;width:100%;height:50%;overflow:hidden;}
+  .digit .top{top:0;border-radius:.1em .1em 0 0;background:var(--card-top);border-bottom:1px solid var(--line);}
+  .digit .bot{bottom:0;border-radius:0 0 .1em .1em;background:var(--card-bot);line-height:0;}
+  .digit .bot .v{display:block;transform:translateY(-50%);}
+  .digit .top .v{display:block;}
+  .leaf{position:absolute;left:0;top:0;width:100%;height:50%;overflow:hidden;border-radius:.1em .1em 0 0;
+    background:var(--card-top);border-bottom:1px solid var(--line);transform-origin:bottom;backface-visibility:hidden;z-index:2;}
+  .leaf.folddown{animation:fold .42s cubic-bezier(.36,0,.2,1) forwards;}
+  @keyframes fold{0%{transform:rotateX(0)}100%{transform:rotateX(-90deg)}}
+
+  /* grid layout */
+  #stage.grid{gap:30px;padding:0 40px;}
+  .gcell{display:flex;flex-direction:column;align-items:center;gap:10px;flex:1 1 0;min-width:0;}
+  .gcell .city{font-size:30px;font-weight:700;color:var(--ink);}
+  .gcell .rel{font-size:20px;font-weight:600;color:var(--muted);line-height:1.15;text-align:center;}
+  .gcell .rel .off{color:var(--accent);}
+
+  /* analog */
+  .analog svg{display:block;}
+  .face{fill:#15151b;stroke:rgba(255,255,255,.06);stroke-width:2;}
+  .tick{stroke:rgba(255,255,255,.22);stroke-width:2;}
+  .tickH{stroke:var(--muted);stroke-width:4;}
+  .hand{stroke:var(--ink);stroke-linecap:round;}
+  .hh{stroke-width:8;} .mh{stroke-width:6;} .sh{stroke:var(--accent);stroke-width:3;}
+  .pin{fill:var(--accent);}
+</style>
+</head>
+<body>
+  <div id="stage"></div>
+<script>
+(function(){
+  var cfg={ layout:"single", style:"flip", clocks:[{label:"Local",tz:"local"}], hour24:false, seconds:true, showDate:true };
+  var stage=document.getElementById('stage');
+  var current=0, updaters=[];
+
+  function pad(n){ return (n<10?'0':'')+n; }
+  function hours(h){ if(cfg.hour24) return {h:h,ap:''}; var ap=h>=12?'PM':'AM'; var hh=h%12; if(hh===0)hh=12; return {h:hh,ap:ap}; }
+
+  function zoneNow(tz){
+    var d=new Date();
+    var t={hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'};
+    var dd={weekday:'long',month:'short',day:'numeric'};
+    if(tz&&tz!=='local'){ t.timeZone=tz; dd.timeZone=tz; }
+    var tp={},dp={};
+    new Intl.DateTimeFormat('en-GB',t).formatToParts(d).forEach(function(x){tp[x.type]=x.value;});
+    new Intl.DateTimeFormat('en-US',dd).formatToParts(d).forEach(function(x){dp[x.type]=x.value;});
+    return { h:(+tp.hour)%24, m:+tp.minute, s:+tp.second, weekday:dp.weekday, month:dp.month, day:+dp.day };
+  }
+  function offsetHours(tz){
+    if(!tz||tz==='local') return 0;
+    var d=new Date();
+    var l=new Date(d.toLocaleString('en-US',{hour12:false}));
+    var z=new Date(d.toLocaleString('en-US',{hour12:false,timeZone:tz}));
+    return Math.round((z-l)/3600000);
+  }
+  function relText(tz){
+    var off=offsetHours(tz);
+    var ln=new Date(), lz=zoneNow(tz), ll=zoneNow('local');
+    var day = lz.day===ll.day ? 'Today' : (off>0 ? 'Tomorrow' : 'Yesterday');
+    if(lz.day===ll.day) day='Today';
+    var offTxt = off===0 ? '' : (off>0?'+':'')+off+'HRS';
+    return {day:day, off:offTxt};
+  }
+
+  // ---- flip helpers ----
+  function makeFlipDigit(){ var d=document.createElement('div'); d.className='digit';
+    d.innerHTML='<div class="half top"><span class="v">0</span></div><div class="half bot"><span class="v">0</span></div><div class="leaf"><span class="v">0</span></div>'; d._cur='0'; return d; }
+  function setFlip(d,v){ if(d._cur===v)return; var top=d.querySelector('.top .v'),bot=d.querySelector('.bot .v'),leaf=d.querySelector('.leaf'),lv=leaf.querySelector('.v');
+    lv.textContent=d._cur; top.textContent=v; bot.textContent=d._cur; leaf.classList.remove('folddown'); void leaf.offsetWidth; leaf.classList.add('folddown');
+    var done=function(){ bot.textContent=v; leaf.classList.remove('folddown'); lv.textContent=v; leaf.removeEventListener('animationend',done); }; leaf.addEventListener('animationend',done); d._cur=v; }
+  function flipGroup(n){ var g=document.createElement('div'); g.className='group'; var a=[]; for(var i=0;i<n;i++){var d=makeFlipDigit(); g.appendChild(d); a.push(d);} return {el:g,d:a}; }
+  function sizeFlip(ds,em){ var w=Math.round(em*0.66); ds.forEach(function(d){ d.style.width=w+'px'; d.style.height=em+'px'; d.style.fontSize=em+'px'; d.style.lineHeight=em+'px'; }); }
+  function colon(){ var c=document.createElement('div'); c.className='colon'; c.innerHTML='<span></span><span></span>'; return c; }
+
+  function analogSVG(R){
+    var size=R*2,cx=R,cy=R,ticks='';
+    for(var i=0;i<60;i++){ var a=i*6*Math.PI/180,o=R-6,inr=(i%5===0)?R-22:R-14;
+      ticks+='<line class="'+((i%5===0)?'tickH':'tick')+'" x1='+(cx+o*Math.sin(a))+' y1='+(cy-o*Math.cos(a))+' x2='+(cx+inr*Math.sin(a))+' y2='+(cy-inr*Math.cos(a))+'/>'; }
+    return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'"><circle class="face" cx='+cx+' cy='+cy+' r='+(R-2)+'/>'+ticks+
+      '<line class="hand hh" x1='+cx+' y1='+cy+' x2='+cx+' y2='+(cy-R*0.5)+'/>'+
+      '<line class="hand mh" x1='+cx+' y1='+cy+' x2='+cx+' y2='+(cy-R*0.72)+'/>'+
+      '<line class="hand sh" x1='+cx+' y1='+(cy+R*0.18)+' x2='+cx+' y2='+(cy-R*0.8)+'/>'+
+      '<circle class="pin" cx='+cx+' cy='+cy+' r=6/></svg>'; }
+  function bindAnalog(el,R){ var hh=el.querySelector('.hh'),mh=el.querySelector('.mh'),sh=el.querySelector('.sh');
+    return function(p){ hh.setAttribute('transform','rotate('+((p.h%12)*30+p.m*0.5)+' '+R+' '+R+')');
+      mh.setAttribute('transform','rotate('+(p.m*6+p.s*0.1)+' '+R+' '+R+')');
+      sh.style.display=cfg.seconds?'':'none'; sh.setAttribute('transform','rotate('+(p.s*6)+' '+R+' '+R+')'); }; }
+
+  // ---- single clock body by style ----
+  function singleBody(style){
+    var em=300, body=document.createElement('div'), upd;
+    if(style==='analog'){ var R=210; var box=document.createElement('div'); box.className='analog'; box.innerHTML=analogSVG(R); body=box; upd=bindAnalog(box,R); }
+    else if(style==='digital'){ body.className='timerow digital'; body.style.fontSize=em+'px';
+      var sh=document.createElement('span'); sh.className='seg'; var c1=colon(); var sm=document.createElement('span'); sm.className='seg'; var c2=colon(); var ss=document.createElement('span'); ss.className='seg'; var ap=document.createElement('span'); ap.className='ampm';
+      body.append(sh,c1,sm,c2,ss,ap);
+      upd=function(p){ var d=hours(p.h); sh.textContent=pad(d.h); sm.textContent=pad(p.m); c2.style.display=cfg.seconds?'':'none'; ss.style.display=cfg.seconds?'':'none'; ss.textContent=pad(p.s); ap.style.display=cfg.hour24?'none':''; ap.textContent=d.ap; }; }
+    else { body.className='timerow flip'; body.style.fontSize=em+'px';
+      var gh=flipGroup(2),k1=colon(),gm=flipGroup(2),k2=colon(),gs=flipGroup(2),apf=document.createElement('span'); apf.className='ampm';
+      sizeFlip(gh.d.concat(gm.d,gs.d),em); body.append(gh.el,k1,gm.el,k2,gs.el,apf);
+      upd=function(p){ var d=hours(p.h),H=pad(d.h),M=pad(p.m),S=pad(p.s); setFlip(gh.d[0],H[0]);setFlip(gh.d[1],H[1]); setFlip(gm.d[0],M[0]);setFlip(gm.d[1],M[1]); k2.style.display=cfg.seconds?'':'none'; gs.el.style.display=cfg.seconds?'':'none'; if(cfg.seconds){setFlip(gs.d[0],S[0]);setFlip(gs.d[1],S[1]);} apf.style.display=cfg.hour24?'none':''; apf.textContent=d.ap; }; }
+    return {el:body, upd:upd};
+  }
+
+  function renderSingle(){
+    stage.className=''; stage.innerHTML=''; updaters=[];
+    var list=cfg.clocks.length?cfg.clocks:[{label:'Local',tz:'local'}];
+    if(current>=list.length) current=0;
+    var c=list[current];
+    var wrap=document.createElement('div'); wrap.className='single-wrap';
+    var lbl=document.createElement('div'); lbl.className='label';
+    var city=document.createElement('div'); city.className='city'; city.textContent=c.label||'';
+    var date=document.createElement('div'); date.className='date';
+    lbl.append(city,date);
+    var b=singleBody(cfg.style);
+    wrap.append(lbl,b.el);
+    if(list.length>1){ var dots=document.createElement('div'); dots.className='dots';
+      for(var i=0;i<list.length;i++){ var d=document.createElement('i'); if(i===current)d.className='on'; dots.appendChild(d); } wrap.appendChild(dots); }
+    stage.appendChild(wrap);
+    updaters.push(function(){ var p=zoneNow(c.tz); b.upd(p); date.style.display=cfg.showDate?'':'none'; date.textContent=p.weekday+' · '+p.month+' '+p.day; });
+  }
+
+  function renderGrid(){
+    stage.className='grid'; stage.innerHTML=''; updaters=[];
+    var list=cfg.clocks.length?cfg.clocks:[{label:'Local',tz:'local'}];
+    var R=list.length<=2?150:(list.length===3?120:95);
+    list.forEach(function(c){
+      var cell=document.createElement('div'); cell.className='gcell';
+      var box=document.createElement('div'); box.className='analog'; box.innerHTML=analogSVG(R);
+      var city=document.createElement('div'); city.className='city'; city.textContent=c.label||'';
+      var rel=document.createElement('div'); rel.className='rel';
+      cell.append(box,city,rel); stage.appendChild(cell);
+      var upd=bindAnalog(box,R);
+      updaters.push(function(){ upd(zoneNow(c.tz)); var r=relText(c.tz); rel.innerHTML=r.day+(r.off?'<br><span class="off">'+r.off+'</span>':''); });
+    });
+  }
+
+  function rebuild(){ if(cfg.layout==='grid') renderGrid(); else renderSingle(); }
+
+  var lastSec=-1;
+  function tick(){
+    var hasAnalog = cfg.layout==='grid' || cfg.style==='analog';
+    var s=new Date().getSeconds();
+    if(s!==lastSec || hasAnalog){ lastSec=s; updaters.forEach(function(u){u();}); }
+    requestAnimationFrame(tick);
+  }
+
+  window.CLOCK={
+    set:function(o){ if(!o)return;
+      if(o.layout) cfg.layout=o.layout;
+      if(o.style) cfg.style=o.style;
+      if(o.clocks) cfg.clocks=o.clocks;
+      if('hour24' in o) cfg.hour24=!!o.hour24;
+      if('seconds' in o) cfg.seconds=!!o.seconds;
+      if('showDate' in o) cfg.showDate=!!o.showDate;
+      if(o.accent) document.documentElement.style.setProperty('--accent',o.accent);
+      current=0; rebuild(); lastSec=-2; },
+    flip:function(dir){ if(cfg.layout!=='single') return; var n=cfg.clocks.length||1; if(n<=1) return;
+      current=(current+(dir>0?1:-1)+n)%n; rebuild(); lastSec=-2; }
+  };
+
+  rebuild(); requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

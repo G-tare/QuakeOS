@@ -1,0 +1,47 @@
+# QuakeOS — Features
+
+What QuakeOS currently does on the DK‑QUAKE / ARIS‑68 panel and in its macOS companion settings app.
+
+## Home / OS layer
+
+- **Springboard home screen** on the panel — a grid of app icons with a status bar (time, wifi, battery) and iOS‑style page dots.
+- **Navigation:** knob press returns Home; swipe left/right to move between home pages; tap an icon to open that app.
+- **Live video wallpapers** behind the home screen, set globally or per home page.
+- **Configurable launch target** — open the panel to Home, a specific app/panel, or the last‑opened screen.
+
+## Macro pages (tile grids)
+
+- Editable **8×2 tile grids** (Apps / System / Web) rendered with DK‑Suite‑style glowing tiles.
+- **Tile actions:** launch a macOS app, open a URL, run a shell command, run AppleScript, adjust panel brightness, or jump to another page.
+- **Mac‑side Tile Editor** with a true 1:1 live device preview, a categorized drag‑and‑drop tile library, and a per‑tile inspector. Edits are a draft until you **Save to Quake**.
+- Real app icons and website favicons resolved automatically for tiles.
+
+## Clock app
+
+- Three styles: **flip** (split‑flap), **digital**, and **analog**.
+- **Single layout** — one clock fills the panel; swipe to flip between your time zones, with a dot indicator.
+- **World‑grid layout** — multiple analog faces at once with each city's name and offset.
+- Per‑clock label and time zone; global 12/24‑hour, seconds, and date toggles. Picking a city auto‑names the clock.
+
+## Music panel
+
+- Now‑playing with artwork and queue (Spotify), shown on the panel.
+
+## System Monitor panel
+
+- Live CPU / GPU / memory / network / battery dashboard read from native macOS APIs.
+
+## Knob RGB ring
+
+- QMK VIA lighting control: effect, color, brightness, and speed.
+- **Reactive lighting** — page‑theme, music, and CPU‑driven modes.
+
+## macOS settings app
+
+- Dark "neon" sidebar design (Device / Panels / Lighting / Studio / Advanced).
+- Live hero preview of the panel; a dockable inspector rail; dynamic dual‑sidebar collapse that adapts to window width.
+- General settings: glow intensity, font, live‑preview placement, startup & menu‑bar behavior, language, and the device launch target.
+
+---
+
+*This list covers shipped functionality. Some on‑device apps (Settings, Browser) and the app‑switcher / home‑layout editor are still in progress and intentionally not listed here.*

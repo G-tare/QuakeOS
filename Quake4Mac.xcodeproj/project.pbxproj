@@ -1,0 +1,530 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		2DE23EDC2FE8E948006556C4 /* GeneralSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE23ED02FE8E948006556C4 /* GeneralSettingsView.swift */; };
+		2DE23EDD2FE8E948006556C4 /* NeonControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE23ED72FE8E948006556C4 /* NeonControls.swift */; };
+		2DE23EDE2FE8E948006556C4 /* SettingsRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE23EDA2FE8E948006556C4 /* SettingsRootView.swift */; };
+		2DE23EDF2FE8E948006556C4 /* SettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE23ED42FE8E948006556C4 /* SettingsSection.swift */; };
+		2DE23EE02FE8E948006556C4 /* PlaceholderSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE23ED22FE8E948006556C4 /* PlaceholderSectionView.swift */; };
+		2DE23EE12FE8E948006556C4 /* SettingsSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE23ED52FE8E948006556C4 /* SettingsSidebar.swift */; };
+		2DE23EE22FE8E948006556C4 /* NeonTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE23ED82FE8E948006556C4 /* NeonTheme.swift */; };
+		2DE23EE32FE8E948006556C4 /* QuakeStripPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE23ECE2FE8E948006556C4 /* QuakeStripPreview.swift */; };
+		2DE23EE62FE8ED13006556C4 /* RGBRingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE23EE42FE8ED13006556C4 /* RGBRingView.swift */; };
+		2DE23EF12FE8ED13006556C4 /* ReactiveLightingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE23EF02FE8ED13006556C4 /* ReactiveLightingView.swift */; };
+		2DE23EF32FE8ED13006556C4 /* PrebuiltPanelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE23EF22FE8ED13006556C4 /* PrebuiltPanelsView.swift */; };
+		2DE23EF62FE8ED13006556C4 /* TileEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE23EF52FE8ED13006556C4 /* TileEditorView.swift */; };
+		2DE23EF82FE8ED13006556C4 /* TileGlyphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE23EF72FE8ED13006556C4 /* TileGlyphView.swift */; };
+		2DE23EFA2FE8ED13006556C4 /* TileCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE23EF92FE8ED13006556C4 /* TileCatalog.swift */; };
+		AA0000000000000000000013 /* Quake4MacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000010 /* Quake4MacApp.swift */; };
+		AA0000000000000000000014 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000011 /* ContentView.swift */; };
+		AA0000000000000000000015 /* QuakeInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000012 /* QuakeInput.swift */; };
+		AA0000000000000000000017 /* MacroPad.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000016 /* MacroPad.swift */; };
+		AA0000000000000000000019 /* SystemMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000018 /* SystemMonitor.swift */; };
+		AA0000000000000000000021 /* Icons in Resources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000020 /* Icons */; };
+		AA0000000000000000000023 /* Web in Resources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000022 /* Web */; };
+		AA0000000000000000000067 /* Wallpapers in Resources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000066 /* Wallpapers */; };
+		AA0000000000000000000025 /* ScreenWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000024 /* ScreenWebView.swift */; };
+		AA0000000000000000000027 /* NowPlaying.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000026 /* NowPlaying.swift */; };
+		AA0000000000000000000029 /* MusicScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000028 /* MusicScreenView.swift */; };
+		AA0000000000000000000061 /* ClockScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000060 /* ClockScreen.swift */; };
+		AA0000000000000000000064 /* HomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000063 /* HomeScreen.swift */; };
+		AA0000000000000000000069 /* Wallpaper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000068 /* Wallpaper.swift */; };
+		AA0000000000000000000031 /* SpotifyAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000030 /* SpotifyAuth.swift */; };
+		AA0000000000000000000033 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000032 /* SettingsView.swift */; };
+		AA0000000000000000000035 /* SpotifyClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000034 /* SpotifyClient.swift */; };
+		AA0000000000000000000037 /* Lyrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000036 /* Lyrics.swift */; };
+		AA0000000000000000000039 /* MusicModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000038 /* MusicModel.swift */; };
+		AA0000000000000000000051 /* Thermals.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000050 /* Thermals.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		2DE23ECE2FE8E948006556C4 /* QuakeStripPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuakeStripPreview.swift; sourceTree = "<group>"; };
+		2DE23ED02FE8E948006556C4 /* GeneralSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralSettingsView.swift; sourceTree = "<group>"; };
+		2DE23ED22FE8E948006556C4 /* PlaceholderSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceholderSectionView.swift; sourceTree = "<group>"; };
+		2DE23ED42FE8E948006556C4 /* SettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSection.swift; sourceTree = "<group>"; };
+		2DE23ED52FE8E948006556C4 /* SettingsSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSidebar.swift; sourceTree = "<group>"; };
+		2DE23ED72FE8E948006556C4 /* NeonControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeonControls.swift; sourceTree = "<group>"; };
+		2DE23ED82FE8E948006556C4 /* NeonTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeonTheme.swift; sourceTree = "<group>"; };
+		2DE23EDA2FE8E948006556C4 /* SettingsRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRootView.swift; sourceTree = "<group>"; };
+		2DE23EE42FE8ED13006556C4 /* RGBRingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RGBRingView.swift; sourceTree = "<group>"; };
+		2DE23EF02FE8ED13006556C4 /* ReactiveLightingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReactiveLightingView.swift; sourceTree = "<group>"; };
+		2DE23EF22FE8ED13006556C4 /* PrebuiltPanelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrebuiltPanelsView.swift; sourceTree = "<group>"; };
+		2DE23EF52FE8ED13006556C4 /* TileEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TileEditorView.swift; sourceTree = "<group>"; };
+		2DE23EF72FE8ED13006556C4 /* TileGlyphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TileGlyphView.swift; sourceTree = "<group>"; };
+		2DE23EF92FE8ED13006556C4 /* TileCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TileCatalog.swift; sourceTree = "<group>"; };
+		AA0000000000000000000006 /* Quake4Mac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Quake4Mac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA0000000000000000000010 /* Quake4MacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Quake4MacApp.swift; sourceTree = "<group>"; };
+		AA0000000000000000000011 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		AA0000000000000000000012 /* QuakeInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuakeInput.swift; sourceTree = "<group>"; };
+		AA0000000000000000000016 /* MacroPad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacroPad.swift; sourceTree = "<group>"; };
+		AA0000000000000000000018 /* SystemMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemMonitor.swift; sourceTree = "<group>"; };
+		AA0000000000000000000020 /* Icons */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Icons; sourceTree = "<group>"; };
+		AA0000000000000000000022 /* Web */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Web; sourceTree = "<group>"; };
+		AA0000000000000000000066 /* Wallpapers */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Wallpapers; sourceTree = "<group>"; };
+		AA0000000000000000000024 /* ScreenWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenWebView.swift; sourceTree = "<group>"; };
+		AA0000000000000000000026 /* NowPlaying.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlaying.swift; sourceTree = "<group>"; };
+		AA0000000000000000000028 /* MusicScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicScreenView.swift; sourceTree = "<group>"; };
+		AA0000000000000000000060 /* ClockScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClockScreen.swift; sourceTree = "<group>"; };
+		AA0000000000000000000063 /* HomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreen.swift; sourceTree = "<group>"; };
+		AA0000000000000000000068 /* Wallpaper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Wallpaper.swift; sourceTree = "<group>"; };
+		AA0000000000000000000030 /* SpotifyAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyAuth.swift; sourceTree = "<group>"; };
+		AA0000000000000000000032 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		AA0000000000000000000034 /* SpotifyClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyClient.swift; sourceTree = "<group>"; };
+		AA0000000000000000000036 /* Lyrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Lyrics.swift; sourceTree = "<group>"; };
+		AA0000000000000000000038 /* MusicModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicModel.swift; sourceTree = "<group>"; };
+		AA0000000000000000000050 /* Thermals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Thermals.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		AA0000000000000000000008 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		2DE23ECF2FE8E948006556C4 /* Preview */ = {
+			isa = PBXGroup;
+			children = (
+				2DE23ECE2FE8E948006556C4 /* QuakeStripPreview.swift */,
+			);
+			path = Preview;
+			sourceTree = "<group>";
+		};
+		2DE23ED12FE8E948006556C4 /* General */ = {
+			isa = PBXGroup;
+			children = (
+				2DE23ED02FE8E948006556C4 /* GeneralSettingsView.swift */,
+			);
+			path = General;
+			sourceTree = "<group>";
+		};
+		2DE23ED32FE8E948006556C4 /* Sections */ = {
+			isa = PBXGroup;
+			children = (
+				2DE23EE52FE8ED13006556C4 /* Lighting */,
+				2DE23EF42FE8ED13006556C4 /* Panels */,
+				2DE23ED12FE8E948006556C4 /* General */,
+				2DE23ED22FE8E948006556C4 /* PlaceholderSectionView.swift */,
+			);
+			path = Sections;
+			sourceTree = "<group>";
+		};
+		2DE23ED62FE8E948006556C4 /* Sidebar */ = {
+			isa = PBXGroup;
+			children = (
+				2DE23ED42FE8E948006556C4 /* SettingsSection.swift */,
+				2DE23ED52FE8E948006556C4 /* SettingsSidebar.swift */,
+			);
+			path = Sidebar;
+			sourceTree = "<group>";
+		};
+		2DE23ED92FE8E948006556C4 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				2DE23ED72FE8E948006556C4 /* NeonControls.swift */,
+				2DE23ED82FE8E948006556C4 /* NeonTheme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		2DE23EDB2FE8E948006556C4 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				2DE23ECF2FE8E948006556C4 /* Preview */,
+				2DE23ED32FE8E948006556C4 /* Sections */,
+				2DE23ED62FE8E948006556C4 /* Sidebar */,
+				2DE23ED92FE8E948006556C4 /* Theme */,
+				2DE23EDA2FE8E948006556C4 /* SettingsRootView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		2DE23EE52FE8ED13006556C4 /* Lighting */ = {
+			isa = PBXGroup;
+			children = (
+				2DE23EE42FE8ED13006556C4 /* RGBRingView.swift */,
+				2DE23EF02FE8ED13006556C4 /* ReactiveLightingView.swift */,
+			);
+			path = Lighting;
+			sourceTree = "<group>";
+		};
+		2DE23EF42FE8ED13006556C4 /* Panels */ = {
+			isa = PBXGroup;
+			children = (
+				2DE23EF22FE8ED13006556C4 /* PrebuiltPanelsView.swift */,
+				2DE23EF52FE8ED13006556C4 /* TileEditorView.swift */,
+				2DE23EF72FE8ED13006556C4 /* TileGlyphView.swift */,
+				2DE23EF92FE8ED13006556C4 /* TileCatalog.swift */,
+			);
+			path = Panels;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000003 /* Quake4Mac */,
+				AA0000000000000000000002 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000002 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000006 /* Quake4Mac.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000003 /* Quake4Mac */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000040 /* App */,
+				AA0000000000000000000041 /* Device */,
+				AA0000000000000000000042 /* UI */,
+				AA0000000000000000000043 /* Macro */,
+				AA0000000000000000000044 /* Music */,
+				AA0000000000000000000048 /* SystemMonitor */,
+				AA0000000000000000000062 /* Clock */,
+				AA0000000000000000000065 /* Home */,
+				AA0000000000000000000020 /* Icons */,
+				AA0000000000000000000022 /* Web */,
+				AA0000000000000000000066 /* Wallpapers */,
+			);
+			path = Quake4Mac;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000040 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000010 /* Quake4MacApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000041 /* Device */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000012 /* QuakeInput.swift */,
+			);
+			path = Device;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000042 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				2DE23EDB2FE8E948006556C4 /* Settings */,
+				AA0000000000000000000011 /* ContentView.swift */,
+				AA0000000000000000000032 /* SettingsView.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000043 /* Macro */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000016 /* MacroPad.swift */,
+				AA0000000000000000000024 /* ScreenWebView.swift */,
+			);
+			path = Macro;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000044 /* Music */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000038 /* MusicModel.swift */,
+				AA0000000000000000000028 /* MusicScreenView.swift */,
+				AA0000000000000000000045 /* Helpers */,
+			);
+			path = Music;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000045 /* Helpers */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000036 /* Lyrics.swift */,
+				AA0000000000000000000046 /* Providers */,
+			);
+			path = Helpers;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000046 /* Providers */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000026 /* NowPlaying.swift */,
+				AA0000000000000000000047 /* Spotify */,
+			);
+			path = Providers;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000047 /* Spotify */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000030 /* SpotifyAuth.swift */,
+				AA0000000000000000000034 /* SpotifyClient.swift */,
+			);
+			path = Spotify;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000048 /* SystemMonitor */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000018 /* SystemMonitor.swift */,
+				AA0000000000000000000050 /* Thermals.swift */,
+			);
+			path = SystemMonitor;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000062 /* Clock */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000060 /* ClockScreen.swift */,
+			);
+			path = Clock;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000065 /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000063 /* HomeScreen.swift */,
+				AA0000000000000000000068 /* Wallpaper.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		AA0000000000000000000005 /* Quake4Mac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA000000000000000000000B /* Build configuration list for PBXNativeTarget "Quake4Mac" */;
+			buildPhases = (
+				AA0000000000000000000007 /* Sources */,
+				AA0000000000000000000008 /* Frameworks */,
+				AA0000000000000000000009 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Quake4Mac;
+			productName = Quake4Mac;
+			productReference = AA0000000000000000000006 /* Quake4Mac.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AA0000000000000000000004 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					AA0000000000000000000005 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = AA000000000000000000000A /* Build configuration list for PBXProject "Quake4Mac" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = AA0000000000000000000001;
+			productRefGroup = AA0000000000000000000002 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				AA0000000000000000000005 /* Quake4Mac */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		AA0000000000000000000009 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA0000000000000000000021 /* Icons in Resources */,
+				AA0000000000000000000023 /* Web in Resources */,
+				AA0000000000000000000067 /* Wallpapers in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		AA0000000000000000000007 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2DE23EDC2FE8E948006556C4 /* GeneralSettingsView.swift in Sources */,
+				2DE23EDD2FE8E948006556C4 /* NeonControls.swift in Sources */,
+				2DE23EDE2FE8E948006556C4 /* SettingsRootView.swift in Sources */,
+				2DE23EDF2FE8E948006556C4 /* SettingsSection.swift in Sources */,
+				2DE23EE02FE8E948006556C4 /* PlaceholderSectionView.swift in Sources */,
+				2DE23EE12FE8E948006556C4 /* SettingsSidebar.swift in Sources */,
+				2DE23EE22FE8E948006556C4 /* NeonTheme.swift in Sources */,
+				2DE23EE32FE8E948006556C4 /* QuakeStripPreview.swift in Sources */,
+				AA0000000000000000000013 /* Quake4MacApp.swift in Sources */,
+				AA0000000000000000000014 /* ContentView.swift in Sources */,
+				AA0000000000000000000015 /* QuakeInput.swift in Sources */,
+				AA0000000000000000000017 /* MacroPad.swift in Sources */,
+				AA0000000000000000000019 /* SystemMonitor.swift in Sources */,
+				AA0000000000000000000051 /* Thermals.swift in Sources */,
+				AA0000000000000000000025 /* ScreenWebView.swift in Sources */,
+				AA0000000000000000000027 /* NowPlaying.swift in Sources */,
+				AA0000000000000000000029 /* MusicScreenView.swift in Sources */,
+				AA0000000000000000000061 /* ClockScreen.swift in Sources */,
+				AA0000000000000000000064 /* HomeScreen.swift in Sources */,
+				AA0000000000000000000069 /* Wallpaper.swift in Sources */,
+				AA0000000000000000000031 /* SpotifyAuth.swift in Sources */,
+				AA0000000000000000000033 /* SettingsView.swift in Sources */,
+				AA0000000000000000000035 /* SpotifyClient.swift in Sources */,
+				AA0000000000000000000037 /* Lyrics.swift in Sources */,
+				AA0000000000000000000039 /* MusicModel.swift in Sources */,
+				2DE23EE62FE8ED13006556C4 /* RGBRingView.swift in Sources */,
+				2DE23EF12FE8ED13006556C4 /* ReactiveLightingView.swift in Sources */,
+				2DE23EF32FE8ED13006556C4 /* PrebuiltPanelsView.swift in Sources */,
+				2DE23EF62FE8ED13006556C4 /* TileEditorView.swift in Sources */,
+				2DE23EF82FE8ED13006556C4 /* TileGlyphView.swift in Sources */,
+				2DE23EFA2FE8ED13006556C4 /* TileCatalog.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		AA000000000000000000000C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		AA000000000000000000000D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_OPTIMIZATION_LEVEL = s;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		AA000000000000000000000E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = NO;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = KWSDH8Z343;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Shows your connected Bluetooth devices on the Quake panel.";
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.quake4mac.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		AA000000000000000000000F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = NO;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = KWSDH8Z343;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Shows your connected Bluetooth devices on the Quake panel.";
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.quake4mac.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		AA000000000000000000000A /* Build configuration list for PBXProject "Quake4Mac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA000000000000000000000C /* Debug */,
+				AA000000000000000000000D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AA000000000000000000000B /* Build configuration list for PBXNativeTarget "Quake4Mac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA000000000000000000000E /* Debug */,
+				AA000000000000000000000F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = AA0000000000000000000004 /* Project object */;
+}

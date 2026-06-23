@@ -1,0 +1,20 @@
+build/
+.build/
+DerivedData/
+*.xcuserstate
+.DS_Store
+xcuserdata/
+*.xcuserdatad/
+
+# Dev-only files (not needed to build the app)
+/Package.swift
+/Sources/
+/run.sh
+/tools/
+/preview-*.html
+/decokee-extracted/
+/dk-suite-maps/
+/ROADMAP.md
+/NOTES.md
+/SETTINGS-DESIGN-PROMPT.md
+/FEATURE-INVENTORY.md

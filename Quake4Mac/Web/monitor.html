@@ -1,0 +1,355 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Quake System Monitor — 4 squares</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#0a0a0c;
+    font-family:-apple-system,"SF Pro Text","Helvetica Neue",sans-serif;color:#fff;}
+
+  /* Four equal square regions, filling the panel. */
+  #grid{position:fixed;inset:0;display:grid;gap:8px;padding:8px;box-sizing:border-box;
+    grid-template-columns:repeat(4,1fr);grid-template-rows:1fr;}
+  .sq{min-width:0;min-height:0;display:flex;}
+  .sq>.tile{flex:1;min-height:0;}                          /* tile fills its square (Memory/Process) */
+  .sq1{flex-direction:column;gap:8px;}                     /* CPU over GPU, each fills half */
+  .sq4{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:8px;}
+
+  /* systemInfoTheme tile: near-black + cyan bottom-glow + cyan diagonal border. */
+  .tile{--c:0,229,255;position:relative;overflow:hidden;border-radius:16px;min-width:0;min-height:0;
+    background:radial-gradient(62% 48% at 50% 113%,rgba(var(--c),.20),rgba(0,0,0,0) 70%),#0c0d10;
+    padding:8px 11px;box-sizing:border-box;display:flex;flex-direction:column;}
+  /* Border = DecoKee's EXACT bgSVG stroke gradient (UnitControl): accent → #3A3A3A at
+     47.86% → #252525 at 52.45%, diagonal ~146°, whole stroke at 0.55 opacity. */
+  .tile::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:2px;
+    background:linear-gradient(146deg,rgba(0,229,255,.55) 0%,rgba(58,58,58,.55) 47.86%,rgba(37,37,37,.55) 52.45%,rgba(37,37,37,.55) 100%);
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;}
+  /* Unified tile label — same size/weight/colour on every box (DecoKee-style: light + glow). */
+  .hd{font-size:clamp(12px,1.25vw,18px);font-weight:600;letter-spacing:.3px;color:#E6EEF6;text-shadow:0 0 8px rgba(0,229,255,.22);flex:none;}
+  .body{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;}
+  svg{display:block;overflow:visible;}
+  .big{font-weight:700;text-shadow:0 0 10px rgba(var(--c),.45);line-height:1;}
+  .sub{font-weight:600;letter-spacing:1px;color:rgba(255,255,255,.5);}
+  .gaugeWrap{position:relative;display:flex;align-items:center;justify-content:center;}
+  .gaugeWrap .ctr{position:absolute;text-align:center;}
+
+  .bar{margin:2px 0;}
+  .bar .row{display:flex;justify-content:space-between;font-size:clamp(8px,.85vw,12px);margin-bottom:3px;}
+  .bar .row .l{color:rgba(255,255,255,.6)}.bar .row .v{color:rgba(255,255,255,.88)}
+  .track{height:7px;border-radius:5px;background:rgba(255,255,255,.07);overflow:hidden;}
+  .fill{height:100%;border-radius:5px;}
+
+  /* Memory — DecoKee MemIconView, exact static CSS (sizes set inline from baseSize=min(w,h)*0.8). */
+  .tile.mem{padding:0;}
+  .mem .mem-flex{position:relative;width:100%;height:100%;display:flex;flex-direction:column;padding:4% 6%;box-sizing:border-box;overflow:hidden;}
+  .mem .m-title{font-size:clamp(12px,1.25vw,18px);color:#E6EEF6;font-weight:600;text-shadow:0 0 8px rgba(0,229,255,.22);letter-spacing:.3px;flex:none;margin-bottom:3%;}
+  .mem .data-container{width:100%;display:flex;flex-direction:column;gap:6%;flex:none;}
+  .mem .mem-top{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-end;gap:3px;overflow:hidden;color:rgba(255,255,255,.6);padding-top:4%;}
+  .mem .mtrow{display:flex;justify-content:space-between;align-items:baseline;}
+  .mem .mtname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .mem .mtval{color:#fff;flex:none;margin-left:10px;}
+  .mem .data-row{display:flex;flex-direction:column;width:100%;}
+  .mem .row-head{display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:.2em;}
+  .mem .row-name{color:rgba(255,255,255,.8);text-align:left;font-weight:500;}
+  .mem .row-value{color:#fff;text-align:right;text-shadow:0 0 8px rgba(255,255,255,.5);font-weight:600;}
+  .mem .row-bar{width:100%;}
+  .mem .progress-track{width:100%;position:relative;background:rgba(255,255,255,.08);overflow:hidden;
+    box-shadow:inset 0 2px 4px rgba(0,0,0,.3),0 1px 2px rgba(0,0,0,.1);}
+  .mem .progress-fill{position:absolute;top:0;left:0;height:100%;box-shadow:0 0 10px rgba(255,255,255,.3),0 0 20px rgba(255,255,255,.1);}
+  .mem .total-track .progress-fill{background:linear-gradient(90deg,#00E5FF 0%,#00B3CC 100%);}
+  .mem .used-track .progress-fill{background:linear-gradient(90deg,#FF4DFF 0%,#B03CFF 100%);}
+  .mem .free-track .progress-fill{background:linear-gradient(90deg,#4DFFE5 0%,#00D1B2 100%);}
+
+  .kv{display:flex;align-items:center;gap:6px;font-size:clamp(8px,.92vw,13px);color:rgba(255,255,255,.88);}
+  .scroll{overflow-y:auto;flex:1;min-height:0;}
+  .scroll::-webkit-scrollbar{width:3px}.scroll::-webkit-scrollbar-thumb{background:rgba(var(--c),.4);border-radius:2px}
+  .dot{width:7px;height:7px;border-radius:50%;flex:none;}
+
+  /* WLAN — NwIconView: title 0.3h, two rows + divider, num 0.16, unit 0.4*num, icon 0.55*num. */
+  .tile.nw{padding:0;}
+  .nw .nw-root{--short:min(var(--w),var(--h));--title-h:calc(var(--h)*0.22);--divider-h:max(1px,calc(var(--h)*0.02));
+    --row-h:calc((var(--h) - var(--title-h) - var(--divider-h))/2);
+    --title-size:calc(var(--short)*0.115);--num-size:calc(var(--short)*0.20);--unit-size:calc(var(--num-size)*0.42);
+    --icon-size:calc(var(--num-size)*0.85);--gap1:max(2px,calc(var(--w)*0.04));--gap2:max(1px,calc(var(--w)*0.01));
+    position:relative;width:100%;height:100%;display:flex;flex-direction:column;padding:0 calc(var(--w)*0.07);box-sizing:border-box;}
+  .nw .title-row{height:var(--title-h);display:flex;align-items:center;}
+  .nw .title{font-size:clamp(12px,1.25vw,18px);color:#E6EEF6;font-weight:600;letter-spacing:.3px;text-shadow:0 0 8px rgba(0,229,255,.22);}
+  .nw .upload-row,.nw .download-row{height:var(--row-h);display:flex;align-items:center;gap:var(--gap1);}
+  .nw .arrow-container{display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .nw .arrow-container svg{width:var(--icon-size);height:var(--icon-size);}
+  .nw .numunit{flex:1;display:flex;align-items:baseline;justify-content:center;gap:var(--gap2);}
+  .nw .number{font-size:var(--num-size);font-weight:700;line-height:1;}
+  .nw .unit{font-size:var(--unit-size);font-weight:500;}
+  .nw .upload-row .number,.nw .upload-row .unit{color:#6E7BFF;}
+  .nw .download-row .number,.nw .download-row .unit{color:#28F8E0;}
+  .nw .divider{height:var(--divider-h);display:flex;align-items:center;justify-content:center;}
+  .nw .divider-line{width:150%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.20),transparent);}
+
+  /* BATTERY — BatteryIconView SVG asset. */
+  .tile.batt{padding:8px 11px;}
+  .batt .battery-root{display:flex;flex-direction:column;height:100%;}
+  .batt .battery-wrap{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;}
+  .batt .battery-svg{width:82%;max-height:78%;filter:drop-shadow(0 0 8px rgba(0,229,255,.4));}
+  .batt .percent-text{font-weight:700;fill:#fff;}
+
+  /* HARD DRIVE — DiskIconView: label = first letter + ':', per-drive colours, scrollable. */
+  .tile.disk{padding:8px 11px;}
+  .disk .disk-root{display:flex;flex-direction:column;height:100%;}
+  .disk .dscroll{flex:1;overflow-y:auto;min-height:0;margin-top:4px;display:block;-webkit-overflow-scrolling:touch;}
+  .disk .dscroll::-webkit-scrollbar{width:3px}.disk .dscroll::-webkit-scrollbar-thumb{background:rgba(0,229,255,.4);border-radius:2px}
+  .disk .drow{display:flex;align-items:center;gap:7px;margin:1px 0;}
+  .disk .dlabel{flex:none;width:clamp(11px,1.1vw,16px);font-weight:700;font-size:clamp(10px,1.05vw,15px);color:#E9F0FB;}
+  .disk .dtrack{flex:1;height:clamp(4px,0.55vw,8px);border-radius:999px;overflow:hidden;}
+  .disk .dfill{height:100%;border-radius:999px;}
+  /* storage-by-category rows */
+  .disk .srow{margin:4px 0;}
+  .disk .stop{display:flex;justify-content:space-between;align-items:baseline;font-size:clamp(9px,1.05vw,15px);margin-bottom:3px;}
+  .disk .sname{color:rgba(255,255,255,.82);}.disk .sval{color:#fff;font-weight:600;}
+  .disk .strack{height:clamp(5px,0.65vw,10px);border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;}
+  .disk .sfill{height:100%;border-radius:999px;}
+</style>
+</head>
+<body>
+  <div id="grid">
+    <div class="sq sq1" id="sq1"></div>
+    <div class="sq" id="sq2"></div>
+    <div class="sq" id="sq3"></div>
+    <div class="sq sq4" id="sq4"></div>
+  </div>
+<script>
+  const el=(h)=>{const d=document.createElement('div');d.innerHTML=h.trim();return d.firstElementChild;};
+  const cyanPurple='<stop offset="0" stop-color="#00e5ff"/><stop offset=".5" stop-color="#6678ff"/><stop offset="1" stop-color="#c43bff"/>';
+
+  function ring(frac,size,stroke,grad){
+    const r=(size/2)-stroke,C=2*Math.PI*r,off=C*(1-Math.max(0.001,Math.min(1,frac)));
+    const id='g'+Math.random().toString(36).slice(2,7);
+    return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="${stroke}"/>
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="url(#${id})" stroke-width="${stroke}" stroke-linecap="round"
+        stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 ${size/2} ${size/2})"
+        style="filter:drop-shadow(0 0 4px rgba(0,229,255,.85))"/>
+      <defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1">${grad}</linearGradient></defs></svg>`;
+  }
+  // DecoKee process colours: running #00FFFF, blocked #6678FF, sleeping #C43BFF
+  function donut(segs,size,stroke){
+    const r=(size/2)-stroke,C=2*Math.PI*r;let acc=0,out='';const tot=segs.reduce((s,x)=>s+x.v,0)||1;
+    segs.forEach(s=>{const len=C*(s.v/tot);
+      out+=`<circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${s.c}" stroke-width="${stroke}"
+        stroke-dasharray="${len.toFixed(1)} ${(C-len).toFixed(1)}" stroke-dashoffset="${(-acc).toFixed(1)}"
+        transform="rotate(-90 ${size/2} ${size/2})" style="filter:drop-shadow(0 0 3px ${s.c})"/>`;acc+=len;});
+    return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="${stroke}"/>${out}</svg>`;
+  }
+  function bar(label,val,frac,grad){
+    const w=Math.max(2,Math.min(100,frac*100)).toFixed(0);
+    return `<div class="bar"><div class="row"><span class="l">${label}</span><span class="v">${val}</span></div>
+      <div class="track"><div class="fill" style="width:${w}%;background:${grad};box-shadow:0 0 8px rgba(0,229,255,.45)"></div></div></div>`;
+  }
+  const gb=(b)=>(b/1073741824).toFixed(1)+' GB';
+  const spd=(b)=>b>=1048576?(b/1048576).toFixed(1)+' MB/s':Math.max(0,Math.round(b/1024))+' KB/s';
+  const tStr=(t)=>t==null?'—':Math.round(t)+'°C';
+
+  // DecoKee CpuIconView temp-pointer needle (exact paths).
+  const NEEDLE='<path d="M32.5269 12.5269C43.5726 12.5269 52.5269 21.4812 52.5269 32.5269C52.5269 37.9437 50.3695 42.8627 46.8736 46.4615C43.2429 50.1989 38.1541 52.5269 32.5269 52.5269C21.4812 52.5269 12.5269 43.5726 12.5269 32.5269C12.5269 21.4812 21.4812 12.5269 32.5269 12.5269Z" fill="white" stroke="#6678FF" stroke-width="6"/><path d="M39.598 25.4558C41.5135 27.3714 42.4895 29.8707 42.5259 32.3811C42.5637 34.9887 41.5877 37.6083 39.598 39.598C35.6927 43.5032 29.3611 43.5032 25.4559 39.598C21.5506 35.6927 6.91414e-06 -7.51019e-06 6.91414e-06 -7.51019e-06C6.91414e-06 -7.51019e-06 35.6927 21.5506 39.598 25.4558Z" fill="white"/><path d="M38.5269 32.5269C38.5269 34.1523 37.8806 35.6267 36.831 36.7072C35.7407 37.8296 34.2152 38.5269 32.5269 38.5269C29.2132 38.5269 26.5269 35.8406 26.5269 32.5269C26.5269 29.2132 29.2132 26.5269 32.5269 26.5269C35.8406 26.5269 38.5269 29.2132 38.5269 32.5269Z" fill="#6678FF"/>';
+
+  // SVG arc helper (angles in degrees; 0°=right, 90°=bottom, clockwise sweep).
+  function arcPath(cx,cy,r,a0,a1){
+    const pt=(a)=>{const d=a*Math.PI/180;return [cx+r*Math.cos(d), cy+r*Math.sin(d)];};
+    const [x0,y0]=pt(a0),[x1,y1]=pt(a1);
+    const large=Math.abs(a1-a0)>180?1:0;
+    return `M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${r.toFixed(1)} ${r.toFixed(1)} 0 ${large} 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`;
+  }
+  // DecoKee CpuIconView — exact: LEFT = temperature (gradient arc dial, NOT full, with a
+  // rotating needle + ℃); RIGHT = load (single cyan arc that fills from the top by load% + %).
+  // Needle rotation, colours and geometry copied from FULL_CpuIconView.vue.
+  function cpuTile(title,load,temp){
+    const t=el(`<div class="tile" style="position:relative;overflow:hidden"></div>`);
+    const gid='tg'+title;
+    const build=()=>{
+      const w=t.clientWidth,h=t.clientHeight; if(!w||!h) return;
+      const m=Math.min(w,h);
+      const lcx=w*0.27, rcx=w*0.73, cy=h*0.54;          // left=temp centre, right=load centre
+      const tr=m*0.30, lr=m*0.30, sw=m*0.075;            // ring radii + stroke
+      const tempArc=arcPath(lcx,cy,tr,120,420);          // 300° gradient gauge, 60° gap at bottom
+      const tv=(temp==null)?null:temp;
+      const rot=((tv==null?0:tv)/90)*360-135;            // their needle formula
+      const nsz=m*0.25;
+      const ld=Math.max(0,Math.min(1,load||0));
+      const loadArc=arcPath(rcx,cy,lr,-90,-90+Math.max(0.001,ld)*360); // from top, fills by load%
+      const tnum=(tv==null)?'—':(Math.round(tv)+'℃');
+      t.innerHTML=`
+        <div class="hd" style="position:absolute;left:6%;top:6%;z-index:30">${title}</div>
+        <svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" style="position:absolute;inset:0">
+          <defs><linearGradient id="${gid}" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#00E5FF"/><stop offset=".5" stop-color="#6678FF"/><stop offset="1" stop-color="#C43BFF"/>
+          </linearGradient></defs>
+          <path d="${tempArc}" fill="none" stroke="url(#${gid})" stroke-width="${sw.toFixed(1)}" stroke-linecap="round"
+            style="filter:drop-shadow(0 0 5px rgba(0,229,255,.45))"/>
+          <path d="${arcPath(rcx,cy,lr,-90,269.99)}" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="${sw.toFixed(1)}"/>
+          <path d="${loadArc}" fill="none" stroke="#00FFFF" stroke-width="${sw.toFixed(1)}" stroke-linecap="round"
+            style="filter:drop-shadow(0 0 4px rgba(0,229,255,.7))"/>
+        </svg>
+        <svg viewBox="0 0 56 56" width="${nsz.toFixed(0)}" height="${nsz.toFixed(0)}"
+          style="position:absolute;left:${lcx.toFixed(0)}px;top:${cy.toFixed(0)}px;transform:translate(-60%,-60%) rotate(${rot.toFixed(1)}deg);transform-origin:60% 60%;z-index:15;transition:transform .5s ease;filter:drop-shadow(0 0 3px rgba(102,120,255,.7))">${NEEDLE}</svg>
+        <div style="position:absolute;left:${lcx.toFixed(0)}px;top:${(cy+m*0.20).toFixed(0)}px;transform:translateX(-50%);font-size:${(m*0.13).toFixed(0)}px;font-weight:600;color:#fff;text-shadow:0 0 8px rgba(255,255,255,.6);z-index:20">${tnum}</div>
+        <div style="position:absolute;left:${rcx.toFixed(0)}px;top:${cy.toFixed(0)}px;transform:translate(-50%,-50%);font-size:${(m*0.21).toFixed(0)}px;font-weight:700;color:#fff;text-shadow:0 0 10px rgba(0,229,255,.45);z-index:20">${Math.round(ld*100)}%</div>
+        <div class="sub" style="position:absolute;left:${rcx.toFixed(0)}px;top:${(cy+m*0.17).toFixed(0)}px;transform:translateX(-50%);font-size:${(m*0.07).toFixed(0)}px;z-index:20">Load</div>`;
+    };
+    requestAnimationFrame(build); new ResizeObserver(build).observe(t);
+    return t;
+  }
+  // DecoKee MemIconView — exact markup; sizes applied from baseSize=min(w,h)*0.8 (uiFactor 0.8).
+  function memDataRow(track,name,val,pct){
+    return `<div class="data-row"><div class="row-head"><div class="row-name">${name}</div><div class="row-value">${val}</div></div>
+      <div class="row-bar"><div class="progress-track ${track}"><div class="progress-fill" style="width:${Math.max(0,Math.min(100,pct)).toFixed(1)}%"></div></div></div></div>`;
+  }
+  function ramTile(m){
+    const usedP=m.total>0?m.used/m.total*100:0, freeP=m.total>0?m.free/m.total*100:0;
+    const top=(m.top||[]).slice(0,3);
+    const topRows=top.map(p=>`<div class="mtrow"><span class="mtname">${p.name}</span><span class="mtval">${gb(p.bytes)}</span></div>`).join('');
+    const t=el(`<div class="tile mem"></div>`);
+    t.innerHTML=`<div class="mem-flex"><div class="m-title">Memory</div>
+      <div class="data-container">
+        ${memDataRow('total-track','Total',gb(m.total),100)}
+        ${memDataRow('used-track','Used',gb(m.used),usedP)}
+        ${memDataRow('free-track','Free',gb(m.free),freeP)}
+      </div>
+      <div class="mem-top">${topRows}</div></div>`;
+    // Apply DecoKee's exact proportional bar sizing live (and on resize).
+    const apply=()=>{
+      const w=t.clientWidth,h=t.clientHeight; if(!w||!h) return;
+      const base=Math.min(w,h)*0.8;
+      t.querySelectorAll('.data-row').forEach(r=>{
+        const hd=r.querySelector('.row-head'); hd.style.height=(base*0.15)+'px'; hd.style.lineHeight=(base*0.15)+'px';
+        r.querySelector('.row-name').style.fontSize=(base*0.06)+'px';
+        r.querySelector('.row-value').style.fontSize=(base*0.06)+'px';
+        const tr=r.querySelector('.progress-track'); tr.style.height=(base*0.08)+'px'; tr.style.borderRadius=(base*0.04)+'px';
+        r.querySelector('.progress-fill').style.borderRadius=(base*0.04)+'px';
+      });
+      t.querySelector('.mem-top').style.fontSize=(base*0.05)+'px';
+    };
+    requestAnimationFrame(apply);
+    new ResizeObserver(apply).observe(t);
+    return t;
+  }
+  function procTile(p){
+    const t=el(`<div class="tile"><div class="hd">Process</div></div>`);
+    const b=el(`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4%;min-height:0"></div>`);
+    t.appendChild(b);
+    const segs=[{v:p.running,c:'#00FFFF',n:'Running'},{v:p.blocked,c:'#6678FF',n:'Blocked'},{v:p.sleeping,c:'#C43BFF',n:'Sleeping'}];
+    const build=()=>{
+      const w=t.clientWidth,h=t.clientHeight; if(!w||!h) return;
+      const ds=Math.max(70,Math.min(w*0.62,h*0.62)), stroke=ds*0.085;   // thinner ring = bigger inner hole
+      b.innerHTML=
+        `<div class="gaugeWrap" style="width:${ds.toFixed(0)}px;height:${ds.toFixed(0)}px">${donut(segs,ds,stroke)}
+           <div class="ctr"><div class="big" style="font-size:${(ds*0.21).toFixed(0)}px">${p.total}</div><div class="sub" style="font-size:${(ds*0.075).toFixed(0)}px;margin-top:2px">Total</div></div></div>
+         <div style="display:flex;gap:${(ds*0.1).toFixed(0)}px;flex-wrap:wrap;justify-content:center">${segs.map(s=>`<div class="kv" style="font-size:${(ds*0.08).toFixed(0)}px"><span class="dot" style="background:${s.c};box-shadow:0 0 6px ${s.c}"></span>${s.n} ${s.v}</div>`).join('')}</div>`;
+    };
+    requestAnimationFrame(build); new ResizeObserver(build).observe(t);
+    return t;
+  }
+  // NwIconView.formattedTx/Rx — exact: KB/S < 1000, then MB/S, then GB/S; ≤3 significant digits.
+  function splitSpeed(b){
+    const kb=b/1024;                                   // bytes/s → KB/s
+    if(kb<1000) return {num:String(Math.round(kb)),unit:'KB/S'};
+    if(kb<1000000){const mb=kb/1024; return {num:(mb<100?mb.toFixed(1):String(Math.round(mb))),unit:'MB/S'};}
+    const gb=kb/1024/1024; return {num:(gb<100?gb.toFixed(1):String(Math.round(gb))),unit:'GB/S'};
+  }
+  // Negotiated Wi-Fi link rate (not throughput): Mbps, switching to Gbps at ≥1000.
+  function fmtLink(mbps){
+    if(!mbps||mbps<=0) return {num:'—',unit:''};
+    if(mbps>=1000){const g=mbps/1000; return {num:(g<10?g.toFixed(2):g.toFixed(1)),unit:'Gbps'};}
+    return {num:String(Math.round(mbps)),unit:'Mbps'};
+  }
+  // WLAN — DecoKee NwIconView shell, but showing the negotiated LINK SPEED (per request).
+  function netTile(n){
+    const L=fmtLink(n.link);
+    const t=el(`<div class="tile nw"></div>`);
+    const wifiIcon='<path d="M5 9.5C9 6 15 6 19 9.5M7.5 12.5C10 10.3 14 10.3 16.5 12.5M10 15.4C11.2 14.4 12.8 14.4 14 15.4" stroke="#28F8E0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="18.3" r="1.2" fill="#28F8E0"/>';
+    t.innerHTML=`<div class="nw-root" style="justify-content:flex-start">
+      <div class="title-row"><span class="title">Wi-Fi</span></div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3%">
+        <div class="arrow-container"><svg viewBox="0 0 24 24" fill="none" style="width:calc(var(--short)*0.26);height:calc(var(--short)*0.26)">${wifiIcon}</svg></div>
+        <div class="numunit"><span class="number" style="color:#28F8E0;font-size:calc(var(--short)*0.26)">${L.num}</span><span class="unit" style="color:#28F8E0">${L.unit}</span></div>
+        ${n.ssid?`<div class="title" style="font-size:calc(var(--short)*0.085);color:rgba(234,246,255,.55);font-weight:500">${n.ssid}</div>`:''}
+      </div>
+    </div>`;
+    const apply=()=>{const w=t.clientWidth,h=t.clientHeight;if(!w||!h)return;const r=t.querySelector('.nw-root');r.style.setProperty('--w',w+'px');r.style.setProperty('--h',h+'px');};
+    requestAnimationFrame(apply); new ResizeObserver(apply).observe(t);
+    return t;
+  }
+  // BATTERY — BatteryIconView exact SVG (glass shell + cyan fill clipped by %, + lightning).
+  const BATT_SHELL='M0 10C0 4.47715 4.47715 0 10 0H140C145.523 0 150 4.47715 150 10V26H153C156.314 26 159 28.6863 159 32V52C159 55.3137 156.314 58 153 58H150V74C150 79.5229 145.523 84 140 84H10C4.47715 84 0 79.5229 0 74V10Z';
+  const BATT_INNER='M6 10C6 6.68629 8.68629 4 12 4H138C141.314 4 144 6.68629 144 10V26H147C150.314 26 153 28.6863 153 32V52C153 55.3137 150.314 58 147 58H144V74C144 77.3137 141.314 80 138 80H12C8.68629 80 6 77.3137 6 74V10Z';
+  function battTile(bt){
+    const t=el(`<div class="tile batt"></div>`);
+    const has=bt!=null, pct=has?Math.round(bt.level*100):0, mask=has?(pct/100)*138:138, charging=has&&bt.charging;
+    t.innerHTML=`<div class="battery-root"><div class="hd">Battery</div>
+      <div class="battery-wrap"><svg class="battery-svg" viewBox="0 0 159 84" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <linearGradient id="shellGrad" x1="80" y1="0" x2="80" y2="84" gradientUnits="userSpaceOnUse"><stop stop-color="#00FFFF"/><stop offset="1" stop-color="#004545"/></linearGradient>
+          <linearGradient id="fillGrad" x1="75" y1="10" x2="75" y2="74" gradientUnits="userSpaceOnUse"><stop stop-color="#00DDDD"/><stop offset="1" stop-color="#0097AF"/></linearGradient>
+          <clipPath id="progressClip"><rect x="6" y="10" width="${mask.toFixed(1)}" height="64"/></clipPath>
+        </defs>
+        <path d="${BATT_SHELL}" fill="url(#shellGrad)" fill-opacity="0.2"/>
+        <path d="M10 0.5H140C145.247 0.5 149.5 4.7533 149.5 10V26.5H153C156.038 26.5 158.5 28.9624 158.5 32V52C158.5 55.0376 156.038 57.5 153 57.5H149.5V74C149.5 79.2467 145.247 83.5 140 83.5H10C4.7533 83.5 0.5 79.2467 0.5 74V10C0.500001 4.7533 4.7533 0.500001 10 0.5Z" stroke="white" stroke-opacity="0.06"/>
+        <g opacity="0.3"><path d="${BATT_INNER}" fill="url(#fillGrad)"/></g>
+        <g clip-path="url(#progressClip)"><path d="${BATT_INNER}" fill="url(#fillGrad)"/></g>
+        <text x="80" y="44" text-anchor="middle" dominant-baseline="middle" class="percent-text" font-size="36">${has?pct:0}%</text>
+        ${charging?'<path d="M128 30L118 45H123L120 55L130 40H125L128 30Z" fill="#FFFFFF"/>':''}
+      </svg></div></div>`;
+    return t;
+  }
+  // STORAGE — breakdown by category (each: name + GB + bar where total = whole disk). Scrollable.
+  function storageTile(s){
+    const t=el(`<div class="tile disk"></div>`);
+    const total=(s&&s.total)||1, cats=(s&&s.cats)||[];
+    const cols=['#00E5FF','#6678FF','#C43BFF','#FF4DFF','#4DFFE5','#FFCE4D','#7CFF6B','#4FB0FF','#FF8A5B'];
+    const rows=cats.map((c,i)=>{const col=cols[i%cols.length], pct=Math.min(100,c.bytes/total*100);
+      return `<div class="srow"><div class="stop"><span class="sname">${c.name}</span><span class="sval">${gb(c.bytes)}</span></div>
+        <div class="strack"><div class="sfill" style="width:${pct.toFixed(1)}%;background:${col};box-shadow:0 0 6px ${col}"></div></div></div>`;}).join('');
+    t.innerHTML=`<div class="disk-root"><div class="hd">Storage</div><div class="dscroll">${rows||'<div class="sub" style="font-size:11px;margin-top:6px">—</div>'}</div></div>`;
+    return t;
+  }
+  function btTile(list){
+    const t=el(`<div class="tile"><div class="hd">Bluetooth</div></div>`);
+    const sc=el(`<div class="scroll" style="margin-top:3px"></div>`);
+    sc.innerHTML=list.length?list.map(n=>`<div class="kv" style="padding:2px 0"><span class="dot" style="background:#4dffe5;box-shadow:0 0 6px #4dffe5"></span>${n}</div>`).join(''):`<div class="sub" style="font-size:9px;margin-top:4px">NONE</div>`;
+    t.appendChild(sc);return t;
+  }
+
+  function render(m){
+    const s1=document.getElementById('sq1');s1.innerHTML='';
+    s1.appendChild(cpuTile('CPU',m.cpu.load,m.cpu.temp));
+    s1.appendChild(cpuTile('GPU',m.gpu.load,m.gpu.temp));
+    document.getElementById('sq2').replaceChildren(ramTile(m.mem));
+    document.getElementById('sq3').replaceChildren(procTile(m.proc));
+    const s4=document.getElementById('sq4');s4.innerHTML='';
+    s4.appendChild(netTile(m.net));        // top-left
+    s4.appendChild(storageTile(m.storage));// top-right
+    s4.appendChild(battTile(m.battery));   // bottom-left
+    s4.appendChild(btTile(m.bt));          // bottom-right
+  }
+
+  // Live data bridge — Swift calls window.MON.set(json) every second.
+  const ZERO={cpu:{load:0,temp:null},gpu:{load:0,temp:null},mem:{total:1,used:0,free:1,top:[]},
+    proc:{running:0,blocked:0,sleeping:0,total:0},net:{up:0,down:0,iface:'Wi-Fi',link:0,ssid:''},
+    battery:null,storage:{total:1,cats:[]},bt:[]};
+  // Device touch isn't delivered to WebKit as scroll gestures (it arrives as USB-HID in
+  // the app), so the app forwards finger-drags here: scroll the nearest scrollable
+  // ancestor under the normalized (nx,ny) touch point by dy device px.
+  window.MON={
+    set(j){ try{ render((typeof j==='string')?JSON.parse(j):j); }catch(e){} },
+    scrollAt(nx,ny,dy){
+      try{
+        const x=nx*window.innerWidth, y=ny*window.innerHeight;
+        let e=document.elementFromPoint(x,y);
+        while(e){ if(e.scrollHeight-e.clientHeight>2 &&
+            /auto|scroll/.test(getComputedStyle(e).overflowY)){ e.scrollTop+=dy; return; } e=e.parentElement; }
+      }catch(e){}
+    }
+  };
+  render(ZERO);
+</script>
+</body>
+</html>

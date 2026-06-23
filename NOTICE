@@ -1,0 +1,30 @@
+Quake4Mac
+Copyright 2026 Quake4Mac contributors
+
+This product is an independent, unofficial macOS client for the
+DK-QUAKE / ARIS-68 device. It is not affiliated with or endorsed by
+DecoKee, MatrixZero, or TeeJS.
+
+----------------------------------------------------------------------
+Third-party material
+----------------------------------------------------------------------
+
+Portions of this product are derived from DecoKee's DecoKeeAI / DK-Suite
+project (Copyright DecoKee / MatrixZero), used under the Apache License,
+Version 2.0:
+
+  - Glyph icon assets (Quake4Mac/Icons/)
+  - Video wallpaper assets (Quake4Mac/Wallpapers/)
+  - Reference web assets and UI sources adapted for compatibility
+
+These files have been copied and, in places, modified for use on macOS.
+Modified files carry a note indicating the change, per the Apache 2.0
+redistribution terms. The original work is available from DecoKee's
+public repository.
+
+Our understanding of the DK-QUAKE / ARIS-68 HID protocol and device
+behavior was additionally informed, as a reference, by TeeJS's open-quake
+project (https://github.com/TeeJS/open-quake), which is MIT-licensed. No
+open-quake source is bundled here; this credit is given as a courtesy.
+
+Apple SF Symbols are used under Apple's terms.

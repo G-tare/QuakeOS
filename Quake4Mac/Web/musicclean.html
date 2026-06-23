@@ -1,0 +1,297 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<!-- Layout adapted from TeeJS/open-quake app/musicview.html (MIT, © Thomas Schmitz),
+     extended with a switchable panel (lyrics / queue / playlists / current) + timed lyrics. -->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; user-select: none;
+    background: #05080d; color: #e8eef6; font-family: -apple-system, "Segoe UI", system-ui, sans-serif; }
+  #wrap { display: flex; width: 100vw; height: 100vh; padding: 22px; gap: 18px; align-items: stretch; }
+
+  .art-col { flex: 0 0 auto; display: flex; align-items: center; }
+  .art { height: 100%; aspect-ratio: 1/1; border-radius: 18px; position: relative; overflow: hidden;
+    background: linear-gradient(160deg, #11202e, #0a1119); border: 1px solid #1a2738;
+    display: flex; align-items: center; justify-content: center; }
+  .art .note { font-size: 110px; opacity: .22; }
+  .art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+
+  .mid { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 16px; padding: 4px 8px; }
+  .title { font-size: 38px; font-weight: 800; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .artist { font-size: 23px; color: #9fb3c8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .status { display: flex; align-items: center; gap: 9px; font-size: 15px; color: #7e93ab; }
+  .status .pill { padding: 4px 13px; border-radius: 20px; background: #16202e; color: #7CFFB2; font-weight: 700; letter-spacing: .5px; }
+  .bar { height: 5px; border-radius: 3px; background: #16202e; overflow: hidden; width: 390px; max-width: 100%; }
+  .bar > i { display: block; height: 100%; width: 0; background: #1db96a; }
+  .controls { display: flex; align-items: center; gap: 16px; margin-top: 4px; }
+  .btn { width: 66px; height: 66px; border-radius: 50%; border: 1px solid #243345; cursor: pointer; color: #e8eef6;
+    background: linear-gradient(160deg, #101a26, #0a1119); display: flex; align-items: center; justify-content: center; position: relative; }
+  .btn:active { transform: scale(.92); }
+  .btn svg { width: 42%; height: 42%; fill: currentColor; }
+  .btn.sm { width: 54px; height: 54px; color: #8aa0b6; }
+  .btn.on { color: #7CFFB2; border-color: #1db96a; box-shadow: 0 0 14px rgba(29,185,84,.45); }
+  .btn .badge { position: absolute; bottom: 7px; right: 8px; font-size: 11px; font-weight: 800; color: #7CFFB2; }
+  .btn.play { width: 86px; height: 86px; color: #04121f; background: linear-gradient(160deg, #1db96a, #0f8f4f); border-color: #7CFFB2; }
+
+  /* Switchable content panel (lyrics/queue/...) — narrower, sits left of the square. */
+  .content { flex: 1; min-width: 0; border-radius: 16px; border: 1px solid #1a2738;
+    background: linear-gradient(160deg, #0e1a26, #0a1119); padding: 16px 18px; display: flex; flex-direction: column; overflow: hidden; }
+  .content h3 { margin: 0 0 12px; font-size: 13px; letter-spacing: 2px; color: #6f8398; font-weight: 700; }
+  .scroll { overflow-y: auto; flex: 1; }
+  .scroll::-webkit-scrollbar { width: 0; }
+  .hint { color: #5d7186; font-size: 16px; }
+
+  .row { display: flex; align-items: center; gap: 12px; padding: 8px 0; cursor: pointer; }
+  .row img, .row .ph { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; background: #16202e; flex: 0 0 auto; }
+  .row .nm { font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .sub { font-size: 14px; color: #8aa0b6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row.cur .nm { color: #7CFFB2; }
+
+  .ly { font-size: 21px; line-height: 1.75; color: #61788f; transition: color .25s; }
+  .ly.cur { color: #ffffff; font-weight: 700; }
+
+  /* Right side: a SQUARE block containing the scrollable service switcher (top)
+     + a 2x2 grid of buttons (filling the rest). Its top/bottom line up with the panel. */
+  /* A real square: side = panel height (100vh minus #wrap's 22px top+bottom padding). */
+  .rightsq { flex: 0 0 auto; width: calc(100vh - 44px); height: calc(100vh - 44px); box-sizing: border-box;
+    display: flex; flex-direction: column; gap: 12px;
+    border: 1px solid #1a2738; border-radius: 18px; padding: 12px; }
+  .services { width: 100%; min-width: 0; flex: 0 0 auto; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+  .services::-webkit-scrollbar { height: 0; }
+  .svc { flex: 0 0 auto; padding: 10px 14px; border-radius: 12px; border: 1px solid #1a2738; cursor: pointer;
+    background: linear-gradient(160deg, #0e1a26, #0a1119); color: #9fb3c8; font-size: 14px; font-weight: 600; white-space: nowrap; }
+  .svc.on { color: #7CFFB2; border-color: #1db96a; box-shadow: 0 0 14px rgba(29,185,84,.3); }
+
+  /* 2x2 grid of buttons, filling the square below the service strip. */
+  .btns { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); gap: 12px; }
+  .tab { border-radius: 16px; border: 1px solid #1a2738; cursor: pointer;
+    background: linear-gradient(160deg, #0e1a26, #0a1119); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: #9fb3c8; }
+  .tab svg { width: 34px; height: 34px; fill: currentColor; }
+  .tab span { font-size: 16px; font-weight: 600; }
+  .tab.on { color: #7CFFB2; border-color: #1db96a; box-shadow: 0 0 16px rgba(29,185,84,.3); }
+
+  /* Opened-playlist header + search */
+  .lhead { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex: 0 0 auto; }
+  .back { color: #7CFFB2; font-size: 16px; font-weight: 700; cursor: pointer; padding: 12px 16px; white-space: nowrap;
+    border: 1px solid #1a2738; border-radius: 10px; background: #0e1a26; }
+  #slq { flex: 1; min-width: 0; background: #0a1119; border: 1px solid #2a3b52; border-radius: 10px;
+    color: #e8eef6; font-size: 18px; padding: 14px 16px; outline: none; height: 50px; box-sizing: border-box; }
+  #slq:focus { border-color: #1db96a; }
+  #slq::placeholder { color: #5d7186; }
+</style>
+</head>
+<body>
+  <div id="wrap">
+    <div class="art-col"><div class="art"><div class="note">🎵</div><img id="art"></div></div>
+
+    <div class="mid">
+      <div class="title" id="title">Nothing playing</div>
+      <div class="artist" id="artist">—</div>
+      <div class="status"><span class="pill" id="status">—</span><span id="src"></span></div>
+      <div class="bar"><i id="prog"></i></div>
+      <div class="controls">
+        <div class="btn sm" id="bShuf"></div>
+        <div class="btn" id="bPrev"></div>
+        <div class="btn play" id="bPlay"></div>
+        <div class="btn" id="bNext"></div>
+        <div class="btn sm" id="bLoop"></div>
+      </div>
+    </div>
+
+    <div class="content"><h3 id="cTitle">LYRICS</h3><div id="cBody" style="flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden"></div></div>
+
+    <div class="rightsq">
+      <div class="services" id="services"></div>
+      <div class="btns" id="tabs"></div>
+    </div>
+  </div>
+
+<script>
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  var IC = {
+    prev:'<svg viewBox="0 0 24 24"><path d="M7 6h2.4v12H7z"/><path d="M20 6v12l-9-6z"/></svg>',
+    next:'<svg viewBox="0 0 24 24"><path d="M14.6 6H17v12h-2.4z"/><path d="M4 6v12l9-6z"/></svg>',
+    play:'<svg viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></svg>',
+    pause:'<svg viewBox="0 0 24 24"><path d="M6 5h4.2v14H6z"/><path d="M13.8 5H18v14h-4.2z"/></svg>',
+    shuffle:'<svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>',
+    repeat:'<svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>',
+    lyrics:'<svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zM4 11h16v2H4zM4 16h10v2H4z"/></svg>',
+    queue:'<svg viewBox="0 0 24 24"><path d="M3 6h12v2H3zM3 11h12v2H3zM3 16h8v2H3zM16 9l5 3-5 3z"/></svg>',
+    lists:'<svg viewBox="0 0 24 24"><path d="M4 5h12v2H4zM4 10h12v2H4zM4 15h8v2H4zM18 5h2v12l-2-1.5z"/></svg>',
+    now:'<svg viewBox="0 0 24 24"><path d="M12 3v10.6A4 4 0 1014 17V7h4V3z"/></svg>'
+  };
+  $('bPrev').innerHTML=IC.prev; $('bNext').innerHTML=IC.next; $('bPlay').innerHTML=IC.play;
+  $('bShuf').innerHTML=IC.shuffle; $('bLoop').innerHTML=IC.repeat;
+  function tx(a){ try { window.webkit.messageHandlers.transport.postMessage(a); } catch(e){} }
+  $('bPrev').onclick=function(){tx('prev');};
+  $('bNext').onclick=function(){tx('next');};
+  $('bPlay').onclick=function(){tx('playpause');};
+  $('bShuf').onclick=function(){tx('shuffle');};
+  $('bLoop').onclick=function(){tx('repeat');};
+
+  // Service switcher (scrollable). Spotify + Apple Music are wired; others are placeholders.
+  var SERVICES = ["Spotify","Apple Music","YouTube Music","SoundCloud","Deezer","Tidal","Amazon Music"];
+  (function(){ var host=$('services'); SERVICES.forEach(function(s){
+    var el=document.createElement('div'); el.className='svc'; el.dataset.svc=s; el.textContent=s;
+    el.onclick=function(){ tx('service:'+s); }; host.appendChild(el);
+  }); })();
+
+  var TABS = [
+    {id:'lyrics', label:'Lyrics', icon:IC.lyrics},
+    {id:'queue',  label:'Queue',  icon:IC.queue},
+    {id:'lists',  label:'Playlists', icon:IC.lists},
+    {id:'now',    label:'Current', icon:IC.now}
+  ];
+  var view = 'lyrics';
+  (function(){
+    var host = $('tabs');
+    TABS.forEach(function(t){
+      var el = document.createElement('div'); el.className='tab'+(t.id===view?' on':''); el.dataset.id=t.id;
+      el.innerHTML = t.icon + '<span>'+t.label+'</span>';
+      el.onclick = function(){ setView(t.id); };
+      host.appendChild(el);
+    });
+  })();
+  function setView(id){
+    view = id;
+    document.querySelectorAll('.tab').forEach(function(e){ e.classList.toggle('on', e.dataset.id===id); });
+    $('cTitle').textContent = id==='lyrics'?'LYRICS':id==='queue'?'UP NEXT':id==='lists'?'PLAYLISTS':'CURRENT';
+    if (id==='lists'){ listView.opened=null; listView.built=false; tx('load:playlists'); }
+    if (id==='now') tx('load:current');
+    renderContent();
+  }
+
+  // ---- data ----
+  var snap = {};
+  var lyricKey = '', built = [];
+  var listView = { opened:null, built:false };
+  var rendered = {}, lastView = '';
+  function changed(key,sig){ if(rendered[key]===sig) return false; rendered[key]=sig; return true; }
+  function uris(arr){ return (arr||[]).map(function(t){return t.uri;}).join('|'); }
+  function wrap(inner){ return '<div class="scroll" id="cScroll">'+inner+'</div>'; }
+  function rowTrack(t, action){
+    var img = t.art ? '<img src="'+t.art+'">' : '<div class="ph"></div>';
+    return '<div class="row'+(t.current?' cur':'')+'" onclick="'+action+'">'+img+'<div><div class="nm">'+esc(t.title)+'</div><div class="sub">'+esc(t.artist)+'</div></div></div>';
+  }
+  // Jump to a track INSIDE the current context (keeps the playlist going) when we have one;
+  // otherwise play just that track. Never replaces the queue with a single-song list.
+  function playAction(t, ctx){
+    ctx = (ctx===undefined) ? (snap.contextURI||'') : (ctx||'');
+    return ctx ? "tx('play:track:"+ctx+"|"+t.uri+"')" : "tx('play:uri:"+t.uri+"')";
+  }
+
+  function buildLyrics(){
+    var syn = snap.synced || [];
+    if (syn.length){
+      $('cBody').innerHTML = wrap(syn.map(function(o,i){ return '<div class="ly" data-i="'+i+'" data-t="'+o.t+'">'+(esc(o.text)||'&nbsp;')+'</div>'; }).join(''));
+      built = syn;
+    } else {
+      var pl = snap.lyrics || [];
+      $('cBody').innerHTML = wrap(pl.length ? pl.map(function(l){ return '<div class="ly">'+(esc(l)||'&nbsp;')+'</div>'; }).join('') : '<div class="hint">'+(snap.title?'No lyrics found':'—')+'</div>');
+      built = [];
+    }
+  }
+
+  var slBuilt = null;   // which search-view structure is currently in the DOM
+
+  function renderContent(){
+    var force = (lastView!==view); lastView = view; if (force) slBuilt = null;
+    var box = $('cBody');
+    if (view==='lyrics'){ var k=(snap.title||'')+'|'+((snap.synced||[]).length); if(force||k!==lyricKey){lyricKey=k; buildLyrics();} tickLyrics(); return; }
+    if (view==='queue'){
+      var q=snap.queue||[];
+      if (force||changed('queue','q'+uris(q)))
+        box.innerHTML = wrap(q.length ? q.map(function(t,i){ return rowTrack(t, playAction(t)); }).join('') : '<div class="hint">'+(snap.spotify?'Nothing in the queue':'Connect Spotify in Settings (⌘,)')+'</div>');
+      return;
+    }
+    if (view==='now'){
+      searchView('now', function(){ return snap.current||[]; }, function(){return snap.contextURI||'';}, null);
+      return;
+    }
+    if (view==='lists'){
+      if (!listView.opened){
+        if (force||changed('lists','l'+(snap.playlists||[]).map(function(p){return p.uri;}).join('|'))){
+          var ls=snap.playlists||[];
+          box.innerHTML = wrap(ls.length ? ls.map(function(p){ var img=p.art?'<img src="'+p.art+'">':'<div class="ph"></div>'; return '<div class="row" data-uri="'+p.uri+'">'+img+'<div><div class="nm">'+esc(p.name)+'</div></div></div>'; }).join('') : '<div class="hint">'+(snap.spotify?'Loading…':'Connect Spotify in Settings (⌘,)')+'</div>');
+          box.querySelectorAll('.row[data-uri]').forEach(function(el){ el.onclick=function(){ openPlaylist(el.getAttribute('data-uri')); }; });
+        }
+      } else {
+        searchView('pl:'+listView.opened, function(){return snap.playlistTracks||[];}, function(){return listView.opened;},
+                   function(){ listView.opened=null; slBuilt=null; rendered['lists']=null; renderContent(); });
+      }
+      return;
+    }
+  }
+
+  // Search bar + filtered track list, shared by Current and any opened playlist.
+  function searchView(key, getTracks, getCtx, backFn){
+    var box=$('cBody');
+    if (slBuilt !== key){
+      var backHtml = backFn ? '<div class="back" id="slBack">‹ Back</div>' : '';
+      box.innerHTML = '<div class="lhead">'+backHtml+'<input id="slq" placeholder="Search songs…" autocomplete="off"></div><div class="scroll" id="slList"></div>';
+      if (backFn) $('slBack').onclick = backFn;
+      $('slq').oninput = function(){ rendered['sl']=null; fillSL(getTracks, getCtx); };
+      $('slq').onfocus = function(){ try{ window.webkit.messageHandlers.transport.postMessage('focusapp'); }catch(e){} };
+      slBuilt = key; rendered['sl']=null;
+    }
+    fillSL(getTracks, getCtx);
+  }
+  function fillSL(getTracks, getCtx){
+    var host=$('slList'); if(!host) return;
+    var q=(($('slq')&&$('slq').value)||'').toLowerCase();
+    var list=getTracks()||[];
+    if(!changed('sl', q+'|'+uris(list)+'|'+(snap.tracksDebug||''))) return;
+    var tr=list.filter(function(t){ return !q || ((t.title+' '+t.artist).toLowerCase().indexOf(q)>=0); });
+    var emptyMsg = !snap.spotify ? 'Connect Spotify in Settings (⌘,)'
+                  : (list.length ? 'No matches' : (snap.tracksDebug ? snap.tracksDebug : 'Loading…'));
+    host.innerHTML = tr.length ? tr.map(function(t){ return rowTrack(t, playAction(t, getCtx())); }).join('')
+      : '<div class="hint">'+esc(emptyMsg)+'</div>';
+  }
+  function openPlaylist(uri){ listView.opened=uri; slBuilt=null; tx('open:playlist:'+uri); renderContent(); }
+
+  // ---- timed lyrics clock ----
+  var base = { ms:0, wall:Date.now(), playing:false };
+  function curMs(){ return base.ms + (base.playing ? (Date.now()-base.wall) : 0); }
+  function tickLyrics(){
+    if (view!=='lyrics' || !built.length) return;
+    var box=$('cScroll'); if(!box) return;
+    var t = curMs(), els=box.querySelectorAll('.ly'), active=0, dirty=false;
+    for (var i=0;i<built.length;i++){ if (built[i].t <= t) active=i; else break; }
+    els.forEach(function(e,i){ var on=(i===active); if(on!==e.classList.contains('cur')){ e.classList.toggle('cur',on); dirty=true; } });
+    if (dirty){ var el=els[active]; if(el){ box.scrollTop = Math.max(0, el.offsetTop - box.clientHeight/2 + el.clientHeight/2); } }
+  }
+  setInterval(tickLyrics, 150);
+
+  window.MUSIC = {
+    update(s){
+      var o; try { o = (typeof s==='string') ? JSON.parse(s) : s; } catch(e){ return; }
+      snap = o;
+      $('title').textContent = o.title || 'Nothing playing';
+      $('artist').textContent = o.artist || '—';
+      $('status').textContent = o.playing ? 'Playing' : (o.title ? 'Paused' : '—');
+      $('src').textContent = o.source ? ('· ' + o.source) : '';
+      $('bPlay').innerHTML = o.playing ? IC.pause : IC.play;
+      $('prog').style.width = Math.round((o.progress||0)*100) + '%';
+      var img=$('art');
+      if (o.art){ if (img.getAttribute('src')!==o.art) img.src=o.art; img.style.display='block'; }
+      else { img.removeAttribute('src'); img.style.display='none'; }
+
+      document.querySelectorAll('.svc').forEach(function(e){ e.classList.toggle('on', e.dataset.svc===(o.service||'')); });
+      $('bShuf').classList.toggle('on', !!o.shuffle);
+      var rep=o.repeat||'off'; $('bLoop').classList.toggle('on', rep!=='off');
+      var ob=$('bLoop').querySelector('.badge'); if(ob) ob.remove();
+      if (rep==='track'){ var b=document.createElement('span'); b.className='badge'; b.textContent='1'; $('bLoop').appendChild(b); }
+
+      // resync the lyrics clock from the latest known position
+      base = { ms: (o.progressMs||0), wall: Date.now(), playing: !!o.playing };
+
+      renderContent();
+    }
+  };
+</script>
+</body>
+</html>

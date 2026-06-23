@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000;
+    font-family: -apple-system, "SF Pro Display", "Helvetica Neue", sans-serif; }
+
+  /* DecoKee's actual audio-player background. */
+  #bg { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+
+  .stage { position: fixed; inset: 0; z-index: 2; display: flex; align-items: center; }
+
+  /* Spinning disc on the left, sitting in the background's recess. */
+  .disc-area { position: relative; width: 42%; height: 100%; display: flex; align-items: center; justify-content: center; }
+  .disc { position: relative; width: min(82vh, 34vw); height: min(82vh, 34vw); }
+  .disc .spin { position: absolute; inset: 0; animation: ccw 10s linear infinite; }
+  .disc .vinyl { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .disc .art { position: absolute; top: 50%; left: 50%; width: 33%; height: 33%;
+    transform: translate(-50%, -50%); border-radius: 50%; object-fit: cover; display: none;
+    box-shadow: 0 0 0 3px rgba(0,0,0,.55); }
+  .disc.paused .spin { animation-play-state: paused; }
+
+  /* Their metallic light sweep, blended over the disc. */
+  #light { position: absolute; top: 50%; left: 50%; width: 150%; height: 150%;
+    object-fit: cover; mix-blend-mode: screen; opacity: .18;
+    pointer-events: none; animation: ccwCentered 26s linear infinite; }
+
+  /* Track info on the right. */
+  .info { flex: 1; padding: 0 7% 0 2%; color: #fff; }
+  .info .src { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: hsla(0,0%,100%,.5);
+    display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .info .src .dot { width: 7px; height: 7px; border-radius: 50%; background: #1db954; box-shadow: 0 0 8px #1db954; }
+  .info .title { font-size: 34px; font-weight: 600; line-height: 1.15; margin: 0 0 10px;
+    max-height: 2.3em; overflow: hidden; }
+  .info .artist { font-size: 20px; font-weight: 400; color: hsla(0,0%,100%,.62); }
+
+  @keyframes ccw { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+  @keyframes ccwCentered { from { transform: translate(-50%,-50%) rotate(0deg); }
+    to { transform: translate(-50%,-50%) rotate(-360deg); } }
+</style>
+</head>
+<body>
+  <img id="bg" src="decokee/audioplayer/AudioPlayerBackground.png">
+  <div class="stage">
+    <div class="disc-area">
+      <div class="disc paused" id="disc">
+        <div class="spin">
+          <img class="vinyl" src="decokee/audioplayer/AudioPlayerDiscImage.png">
+          <img class="art" id="art">
+        </div>
+      </div>
+      <img id="light" src="decokee/audioplayer/AudioPlayerLightEffectOverlay1.png">
+    </div>
+    <div class="info">
+      <div class="src"><span class="dot" id="dot"></span><span id="src">—</span></div>
+      <div class="title" id="title">Nothing playing</div>
+      <div class="artist" id="artist"></div>
+    </div>
+  </div>
+
+<script>
+  const disc = document.getElementById('disc');
+  const art = document.getElementById('art');
+  const title = document.getElementById('title');
+  const artist = document.getElementById('artist');
+  const srcEl = document.getElementById('src');
+  const dot = document.getElementById('dot');
+
+  window.MUSIC = {
+    update(s) {
+      let o; try { o = (typeof s === 'string') ? JSON.parse(s) : s; } catch(e){ return; }
+      title.textContent = o.title || 'Nothing playing';
+      artist.textContent = o.artist || '';
+      srcEl.textContent = o.source || '—';
+      dot.style.background = o.source === 'Spotify' ? '#1db954' : (o.source === 'Music' ? '#fa57c1' : '#666');
+      dot.style.boxShadow = '0 0 8px ' + dot.style.background;
+      disc.classList.toggle('paused', !o.playing);
+      if (o.artwork) { art.src = o.artwork; art.style.display = 'block'; }
+      else { art.style.display = 'none'; }
+    }
+  };
+</script>
+</body>
+</html>
