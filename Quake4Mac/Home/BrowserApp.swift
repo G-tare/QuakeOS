@@ -263,9 +263,9 @@ struct BrowserAppView: View {
         ZStack(alignment: .top) {
             Color(white: 0.05)
             VStack(spacing: 0) {
-                row(icon: "plus", title: "New Tab", active: false, h: h * ui.rowH, accent: true)
+                row(icon: "plus", title: "New Tab", active: false, h: h * ui.rowH, accent: true, closable: false)
                 ForEach(session.tabs) { t in
-                    row(icon: "globe", title: t.title, active: t.id == session.activeID, h: h * ui.rowH, accent: false)
+                    row(icon: "globe", title: t.title, active: t.id == session.activeID, h: h * ui.rowH, accent: false, closable: true)
                 }
             }
             .offset(y: ui.sidebarScroll * h)
@@ -273,12 +273,17 @@ struct BrowserAppView: View {
         .frame(width: w, height: h).clipped()
     }
 
-    private func row(icon: String, title: String, active: Bool, h: CGFloat, accent: Bool) -> some View {
+    private func row(icon: String, title: String, active: Bool, h: CGFloat, accent: Bool, closable: Bool) -> some View {
         HStack(spacing: 8) {
             Image(systemName: icon).font(.system(size: h * 0.34, weight: .medium))
                 .foregroundColor(accent ? .cyan : .white.opacity(0.85))
             Text(title).font(.system(size: h * 0.3, weight: .medium)).foregroundColor(.white.opacity(0.9)).lineLimit(1)
             Spacer(minLength: 0)
+            if closable {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: h * 0.4, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.55))
+            }
         }
         .padding(.horizontal, h * 0.3)
         .frame(height: h)
