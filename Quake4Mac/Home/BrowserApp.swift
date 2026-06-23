@@ -8,14 +8,19 @@
 
 import SwiftUI
 import WebKit
+import AppKit
 
 final class BrowserController: ObservableObject {
     @Published var address: String = ""
     @Published var focusTick = 0       // bumped to request the address bar take keyboard focus
     weak var web: WKWebView?
 
-    /// Make the panel window the key window so the Mac keyboard types here.
-    func makeKey() { web?.window?.makeKey() }
+    /// Bring the app forward and make the panel window key so the Mac keyboard types here
+    /// (touch input alone doesn't make our app active).
+    func makeKey() {
+        NSApp.activate(ignoringOtherApps: true)
+        web?.window?.makeKeyAndOrderFront(nil)
+    }
     /// Focus the address bar (touch can't focus native fields on its own).
     func focusAddress() { makeKey(); focusTick += 1 }
 
@@ -95,16 +100,18 @@ struct BrowserWebView: NSViewRepresentable {
         let bridge = """
         window.__quakeTap = function(nx, ny){
           var x = nx*window.innerWidth, y = ny*window.innerHeight;
-          var el = document.elementFromPoint(x, y); if(!el) return;
+          var el = document.elementFromPoint(x, y); if(!el) return false;
           var a = el.closest && el.closest('a[href]');
-          if(a && a.href){ window.location.href = a.href; return; }
+          if(a && a.href){ window.location.href = a.href; return false; }
           ['mousedown','mouseup','click'].forEach(function(t){
             try{ el.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,clientX:x,clientY:y,view:window})); }catch(e){}
           });
-          var f = el.closest && el.closest('input,textarea,select,[contenteditable]');
+          var f = (el.closest && el.closest('input,textarea,select,[contenteditable]'))
+                  || (el.matches && el.matches('input,textarea,select') ? el : null)
+                  || (el.querySelector && el.querySelector('input,textarea,[contenteditable]'));
           if(f && f.getAttribute && f.getAttribute('contenteditable') === 'false') f = null;
-          if(!f && el.matches && el.matches('input,textarea,select')) f = el;
-          if(f && f.focus){ try{ f.focus(); }catch(e){} }
+          if(f && f.focus){ try{ f.focus(); return true; }catch(e){} }
+          return false;
         };
         window.__quakeScroll = function(dx, dy){ window.scrollBy(dx, dy); };
         """
@@ -112,7 +119,9 @@ struct BrowserWebView: NSViewRepresentable {
             WKUserScript(source: bridge, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
 
         let web = WKWebView(frame: .zero, configuration: cfg)
-        web.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+        // Masquerade as desktop Chrome so sites (and Google sign-in) treat us as a standard
+        // browser rather than an embedded web view.
+        web.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         web.navigationDelegate = context.coordinator
         web.uiDelegate = context.coordinator
         ctrl.web = web
@@ -155,9 +164,11 @@ struct BrowserWebView: NSViewRepresentable {
                 else if s.x > 0.92 { ctrl.reload() }
                 else { ctrl.focusAddress() }                 // tap the address bar → focus + keyboard
             } else {
-                ctrl.makeKey()                               // so typing into web fields reaches them
                 let ny = (s.y - toolbarFrac) / (1 - toolbarFrac)
-                web.evaluateJavaScript("window.__quakeTap && window.__quakeTap(\(s.x), \(ny));", completionHandler: nil)
+                // If the tap landed on a text field, pull keyboard focus to the panel so typing lands.
+                web.evaluateJavaScript("window.__quakeTap ? window.__quakeTap(\(s.x), \(ny)) : false") { [weak self] result, _ in
+                    if (result as? Bool) == true { self?.ctrl.makeKey() }
+                }
             }
         }
 
