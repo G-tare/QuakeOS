@@ -115,8 +115,12 @@ final class PadModel: ObservableObject {
     @Published var onHome = true
     @Published var homePage = 0
     @Published var currentDest: AppDest? = nil
+    @Published var recents: [AppDest] = []        // app history, most-recent LAST (rightmost in the switcher)
     private var homeStart: CGPoint?
     private var homeLast: CGPoint?
+    private var switStart: CGPoint?
+    private var switLast: CGPoint?
+    private var switcherTimer: Timer?
 
     func setHomePage(_ p: Int) { let n = max(1, HomeStore.shared.pages.count); homePage = min(max(0, p), n - 1) }
     func goHome() { onHome = true; saveLastNav() }
@@ -131,7 +135,40 @@ final class PadModel: ObservableObject {
         }
         currentDest = dest
         onHome = false
+        switcherOpen = false
+        switcherTimer?.invalidate()
+        recents.removeAll { $0 == dest }            // move to most-recent (end)
+        recents.append(dest)
+        if recents.count > 8 { recents.removeFirst(recents.count - 8) }
         saveLastNav()
+    }
+
+    // MARK: App switcher (knob-driven recents carousel)
+    private func openOrMoveSwitcher(_ d: Int) {
+        guard !recents.isEmpty else { return }
+        if !switcherOpen { switcherOpen = true; switcherIndex = recents.count - 1 }
+        else { switcherIndex = min(max(0, switcherIndex + d), recents.count - 1) }
+        resetSwitcherTimer()
+    }
+    private func commitSwitcher() {
+        switcherTimer?.invalidate()
+        guard recents.indices.contains(switcherIndex) else { switcherOpen = false; return }
+        let d = recents[switcherIndex]
+        switcherOpen = false
+        openApp(d)
+    }
+    private func endSwitcherTouch() {
+        defer { switStart = nil; switLast = nil }
+        guard let s = switStart, let e = switLast else { return }
+        let dx = e.x - s.x
+        if abs(dx) > 0.12 {                          // swipe scrubs the carousel
+            switcherIndex = min(max(0, switcherIndex + (dx < 0 ? 1 : -1)), recents.count - 1)
+            resetSwitcherTimer()
+        } else { commitSwitcher() }                  // tap opens the highlighted app
+    }
+    private func resetSwitcherTimer() {
+        switcherTimer?.invalidate()
+        switcherTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { [weak self] _ in self?.switcherOpen = false }
     }
 
     private func homeTouchEnded() {
@@ -189,19 +226,25 @@ final class PadModel: ObservableObject {
 
     func handle(_ e: QuakeEvent) {
         switch e {
-        case .knobClockwise:        break    // reserved for the app switcher (recents carousel)
-        case .knobCounterClockwise: break    // reserved for the app switcher
-        case .knobPress:            if onHome { setHomePage(0) } else { goHome() }
+        case .knobClockwise:        openOrMoveSwitcher(+1)   // open / scrub the recents app switcher
+        case .knobCounterClockwise: openOrMoveSwitcher(-1)
+        case .knobPress:
+            if switcherOpen { commitSwitcher() }            // open the highlighted app
+            else if onHome { setHomePage(0) }
+            else { goHome() }                               // home button
         case .touchBegan(let p):
-            if onHome { homeStart = p; homeLast = p }
+            if switcherOpen { switStart = p; switLast = p }
+            else if onHome { homeStart = p; homeLast = p }
             else if inMacroGrid { activate(at: p) }
             else { ScreenTouchRouter.shared.onBegan?(p) }
         case .touchEnded:
             pressedTileID = nil
-            if onHome { homeTouchEnded() }
+            if switcherOpen { endSwitcherTouch() }
+            else if onHome { homeTouchEnded() }
             else if !inMacroGrid { ScreenTouchRouter.shared.onEnded?() }
         case .touchMoved(let p):
-            if onHome { homeLast = p }
+            if switcherOpen { switLast = p }
+            else if onHome { homeLast = p }
             else if !inMacroGrid { ScreenTouchRouter.shared.onMoved?(p) }
         }
     }

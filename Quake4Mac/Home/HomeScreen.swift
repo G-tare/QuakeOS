@@ -57,6 +57,9 @@ final class HomeStore: ObservableObject {
     /// Every app available, for the launch-target picker.
     var allApps: [HomeApp] { pages.flatMap { $0 } }
 
+    /// The home app matching a destination (for the app switcher's icon/label).
+    func appFor(_ dest: AppDest) -> HomeApp? { allApps.first { $0.dest == dest } }
+
     static func defaultPages() -> [[HomeApp]] {
         let osBasics: [HomeApp] = [
             HomeApp(title: "Clock",    symbol: "clock.fill",       tint: .orange, dest: .panel("clock")),
@@ -172,6 +175,55 @@ struct HomeScreenView: View {
                     .frame(width: 9, height: 9)
             }
         }
+    }
+}
+
+// iOS-style app switcher: recently-used apps as a horizontal carousel (most-recent on the right).
+// Knob rotate scrubs the highlight, knob press / tap opens it.
+struct AppSwitcherView: View {
+    let recents: [AppDest]
+    let index: Int
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            let cardW = h * 0.46, cardH = h * 0.6
+            let step = cardW * 1.22
+            let center = (CGFloat(recents.count - 1) / 2 - CGFloat(index)) * step
+            ZStack {
+                Color.black.opacity(0.84).ignoresSafeArea()
+                Text("Recent apps")
+                    .font(.system(size: h * 0.06, weight: .semibold)).foregroundColor(.white.opacity(0.85))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top).padding(.top, h * 0.06)
+                HStack(spacing: step - cardW) {
+                    ForEach(recents.indices, id: \.self) { i in
+                        card(recents[i], focused: i == index, w: cardW, h: cardH)
+                    }
+                }
+                .frame(width: w)
+                .offset(x: center)
+            }
+            .frame(width: w, height: h)
+            .animation(.spring(response: 0.28, dampingFraction: 0.85), value: index)
+        }
+    }
+
+    private func card(_ dest: AppDest, focused: Bool, w: CGFloat, h: CGFloat) -> some View {
+        let app = HomeStore.shared.appFor(dest)
+        let title = app?.title ?? dest.displayName
+        let symbol = app?.symbol ?? "app.fill"
+        let tint = app?.tint ?? .gray
+        return VStack(spacing: w * 0.1) {
+            RoundedRectangle(cornerRadius: w * 0.22, style: .continuous)
+                .fill(tint.opacity(0.92)).frame(width: w * 0.6, height: w * 0.6)
+                .overlay(Image(systemName: symbol).font(.system(size: w * 0.28, weight: .medium)).foregroundColor(.white))
+            Text(title).font(.system(size: w * 0.13, weight: .semibold)).foregroundColor(.white).lineLimit(1)
+        }
+        .frame(width: w, height: h)
+        .background(RoundedRectangle(cornerRadius: w * 0.12, style: .continuous).fill(Color.white.opacity(focused ? 0.12 : 0.05)))
+        .overlay(RoundedRectangle(cornerRadius: w * 0.12, style: .continuous).strokeBorder(focused ? Color.cyan : Color.clear, lineWidth: 3))
+        .scaleEffect(focused ? 1.0 : 0.84)
+        .opacity(focused ? 1 : 0.6)
     }
 }
 

@@ -68,9 +68,9 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
             }
 
-            // Radial page-switcher overlay (knob: turn to browse, press to commit).
+            // App switcher overlay (knob: turn to scrub recents, press/tap to open).
             if pad.switcherOpen {
-                PageSwitcher(titles: pad.screenTitles, index: pad.switcherIndex)
+                AppSwitcherView(recents: pad.recents, index: pad.switcherIndex)
                     .transition(.opacity)
             }
         }
