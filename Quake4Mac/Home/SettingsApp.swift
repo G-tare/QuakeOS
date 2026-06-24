@@ -25,8 +25,10 @@ final class SettingsAppUI: ObservableObject {
     ]
     let sidebarFrac: CGFloat = 0.26
     let sidebarRowH: CGFloat = 0.2     // normalized to full panel height
-    let headerFrac: CGFloat = 0.18     // content header band (normalized)
+    let headerFrac: CGFloat = 0.2      // content header band (normalized)
     let rowH: CGFloat = 0.2            // content row height (normalized)
+    let trackLeftFrac: CGFloat = 0.06  // slider track left edge (content-normalized x)
+    let trackWidthFrac: CGFloat = 0.32 // slider track width (content-normalized)
 
     private var start: CGPoint?, last: CGPoint?
     private var sliderSet: ((Double) -> Void)?
@@ -99,7 +101,7 @@ final class SettingsAppUI: ObservableObject {
     }
     private func sliderValue(at p: CGPoint) -> Double {
         let cxc = (p.x - sidebarFrac) / (1 - sidebarFrac)
-        return min(1, max(0, (cxc - 0.03) / 0.94))     // track spans the padded content width
+        return min(1, max(0, (cxc - trackLeftFrac) / trackWidthFrac))
     }
 }
 
@@ -124,76 +126,108 @@ struct SettingsAppView: View {
         }
     }
 
+    // MARK: sidebar
+
     private func sidebar(w: CGFloat, h: CGFloat) -> some View {
         ZStack(alignment: .top) {
-            Color(white: 0.06)
-            VStack(spacing: 0) {
+            Color(white: 0.09)
+            Rectangle().fill(Color.white.opacity(0.07)).frame(width: 1).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
+            VStack(spacing: 0) {                                  // rows start at top (matches hit-testing)
                 ForEach(ui.pages.indices, id: \.self) { i in
                     let on = i == ui.page
-                    HStack(spacing: 10) {
-                        Image(systemName: ui.pages[i].icon).font(.system(size: h * 0.05, weight: .medium))
-                            .foregroundColor(on ? .cyan : .white.opacity(0.85)).frame(width: h * 0.07)
-                        Text(ui.pages[i].title).font(.system(size: h * 0.05, weight: .medium)).foregroundColor(.white.opacity(0.92))
+                    HStack(spacing: w * 0.06) {
+                        Image(systemName: ui.pages[i].icon).font(.system(size: h * 0.05, weight: .semibold))
+                            .foregroundColor(on ? .cyan : .white.opacity(0.65)).frame(width: h * 0.06)
+                        Text(ui.pages[i].title)
+                            .font(.system(size: h * 0.05, weight: on ? .semibold : .regular))
+                            .foregroundColor(on ? .white : .white.opacity(0.8))
                         Spacer(minLength: 0)
                     }
-                    .padding(.horizontal, h * 0.04)
+                    .padding(.horizontal, w * 0.07)
                     .frame(height: h * ui.sidebarRowH)
-                    .background(on ? Color.white.opacity(0.12) : Color.clear)
+                    .background(
+                        RoundedRectangle(cornerRadius: h * 0.05, style: .continuous)
+                            .fill(on ? Color.white.opacity(0.10) : Color.clear)
+                            .padding(.horizontal, w * 0.04).padding(.vertical, h * 0.02)
+                    )
                 }
             }
         }
         .frame(width: w, height: h)
     }
 
+    // MARK: content
+
     private func content(w: CGFloat, h: CGFloat) -> some View {
-        VStack(spacing: 0) {
+        let pad = w * ui.trackLeftFrac
+        return VStack(spacing: 0) {
             Text(ui.pages[ui.page].title)
-                .font(.system(size: h * 0.08, weight: .semibold)).foregroundColor(.white)
+                .font(.system(size: h * 0.085, weight: .bold)).foregroundColor(.white)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, w * 0.04)
+                .padding(.leading, pad)
                 .frame(height: h * ui.headerFrac, alignment: .center)
-            ForEach(ui.rows()) { row in rowView(row, w: w, h: h * ui.rowH) }
+                .overlay(alignment: .bottom) { Rectangle().fill(Color.white.opacity(0.08)).frame(height: 1).padding(.trailing, w * 0.05) }
+            ForEach(Array(ui.rows().enumerated()), id: \.element.id) { idx, row in
+                rowView(row, w: w, h: h * ui.rowH, last: idx == ui.rows().count - 1)
+            }
             Spacer(minLength: 0)
         }
         .frame(width: w, height: h)
         .background(Color.black)
     }
 
-    @ViewBuilder private func rowView(_ row: SettingsRow, w: CGFloat, h: CGFloat) -> some View {
-        if case .slider(let v, _) = row.kind {
-            VStack(alignment: .leading, spacing: h * 0.06) {
-                Text(row.title).font(.system(size: h * 0.22, weight: .medium)).foregroundColor(.white.opacity(0.85))
-                sliderTrack(v, trackW: w * 0.94, h: h)
-            }
-            .frame(width: w, height: h, alignment: .leading)
-            .padding(.horizontal, w * 0.03)
-        } else {
-            HStack(spacing: 12) {
-                Text(row.title).font(.system(size: h * 0.3, weight: .medium)).foregroundColor(.white.opacity(0.92))
-                Spacer()
-                switch row.kind {
-                case .toggle(let on, _):
-                    Text(on ? "On" : "Off").font(.system(size: h * 0.26, weight: .semibold))
-                        .foregroundColor(on ? .black : .white.opacity(0.8))
-                        .padding(.horizontal, h * 0.22).padding(.vertical, h * 0.1)
-                        .background(Capsule().fill(on ? Color.green : Color.white.opacity(0.18)))
-                case .info(let value):
-                    Text(value).font(.system(size: h * 0.28)).foregroundColor(.white.opacity(0.6))
-                case .slider: EmptyView()
+    @ViewBuilder private func rowView(_ row: SettingsRow, w: CGFloat, h: CGFloat, last: Bool) -> some View {
+        let pad = w * ui.trackLeftFrac
+        Group {
+            if case .slider(let v, _) = row.kind {
+                VStack(alignment: .leading, spacing: h * 0.1) {
+                    Text(row.title).font(.system(size: h * 0.2, weight: .medium)).foregroundColor(.white.opacity(0.85))
+                    HStack(spacing: w * 0.012) {
+                        sliderTrack(v, trackW: w * ui.trackWidthFrac, h: h)
+                        Text("\(Int((v * 100).rounded()))%")
+                            .font(.system(size: h * 0.18, weight: .semibold).monospacedDigit()).foregroundColor(.white.opacity(0.7))
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, pad)
+            } else {
+                HStack(spacing: 12) {
+                    Text(row.title).font(.system(size: h * 0.26, weight: .medium)).foregroundColor(.white.opacity(0.92))
+                    Spacer()
+                    control(row.kind, h: h)
+                }
+                .padding(.leading, pad).padding(.trailing, w * 0.05)
             }
-            .padding(.horizontal, h * 0.3)
-            .frame(height: h)
+        }
+        .frame(width: w, height: h, alignment: .leading)
+        .overlay(alignment: .bottom) {
+            if !last { Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1).padding(.leading, pad).padding(.trailing, w * 0.05) }
+        }
+    }
+
+    @ViewBuilder private func control(_ kind: SettingsRowKind, h: CGFloat) -> some View {
+        switch kind {
+        case .toggle(let on, _):
+            Text(on ? "On" : "Off").font(.system(size: h * 0.22, weight: .semibold))
+                .foregroundColor(on ? .black : .white.opacity(0.85))
+                .padding(.horizontal, h * 0.22).padding(.vertical, h * 0.09)
+                .background(Capsule().fill(on ? Color.green : Color.white.opacity(0.16)))
+        case .info(let value):
+            Text(value).font(.system(size: h * 0.24)).foregroundColor(.white.opacity(0.55))
+        case .slider:
+            EmptyView()
         }
     }
 
     private func sliderTrack(_ v: Double, trackW: CGFloat, h: CGFloat) -> some View {
-        ZStack(alignment: .leading) {
-            Capsule().fill(Color.white.opacity(0.18)).frame(width: trackW, height: h * 0.16)
-            Capsule().fill(Color.cyan).frame(width: max(h * 0.16, trackW * CGFloat(v)), height: h * 0.16)
-            Circle().fill(.white).frame(width: h * 0.32, height: h * 0.32)
-                .offset(x: trackW * CGFloat(v) - h * 0.16)
+        let th = h * 0.13
+        return ZStack(alignment: .leading) {
+            Capsule().fill(Color.white.opacity(0.16)).frame(width: trackW, height: th)
+            Capsule().fill(Color.cyan).frame(width: max(th, trackW * CGFloat(v)), height: th)
+            Circle().fill(.white).frame(width: h * 0.28, height: h * 0.28)
+                .shadow(color: .black.opacity(0.4), radius: 3)
+                .offset(x: min(trackW - h * 0.28, trackW * CGFloat(v) - h * 0.14))
         }
-        .frame(width: trackW, height: h * 0.34, alignment: .leading)
+        .frame(width: trackW, height: h * 0.3, alignment: .leading)
     }
 }
