@@ -24,39 +24,19 @@ struct ContentView: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            if pad.onHome {
-                WallpaperView(id: wallpaper.id(forPage: pad.homePage)).ignoresSafeArea()
-                HomeScreenView(pad: pad).ignoresSafeArea()
-            } else if case .builtin("wallpaper")? = pad.currentDest {
-                WallpaperAppView().ignoresSafeArea()
-            } else if case .builtin("browser")? = pad.currentDest {
-                BrowserAppView().ignoresSafeArea()
-            } else if case .builtin(let b)? = pad.currentDest {
-                HomeBuiltinView(title: b.capitalized).ignoresSafeArea()
-            } else {
-            switch pad.extra {
-            case .monitor:
-                Wallpaper().ignoresSafeArea()
-                SystemMonitorView()
-            case .music:
-                MusicScreenView().ignoresSafeArea()
-            case .clock:
-                ClockScreenView().ignoresSafeArea()
-            case .none:
-                // Tile pages can be a grid (DK-Suite's HTML/CSS neon keys), a bundled app
-                // renderer (Clock), or a web dashboard.
-                switch pad.currentKind {
-                case .grid:
-                    ScreenWebView(pad: pad).ignoresSafeArea()
-                case .app(let id) where id == "clock":
-                    ClockScreenView().ignoresSafeArea()
-                case .web(let url):
-                    WebDashboardView(urlString: url).ignoresSafeArea()
-                case .app:
-                    ScreenWebView(pad: pad).ignoresSafeArea()
+            Group {
+                if pad.onHome {
+                    ZStack {
+                        WallpaperView(id: wallpaper.id(forPage: pad.homePage)).ignoresSafeArea()
+                        HomeScreenView(pad: pad).ignoresSafeArea()
+                    }
+                    .transition(.opacity)
+                } else {
+                    appContent(pad)
+                        .transition(.scale(scale: 0.9).combined(with: .opacity))   // iOS-ish open/close zoom
                 }
             }
-            }
+            .animation(.spring(response: 0.3, dampingFraction: 0.86), value: pad.onHome)
 
             // Health dot — only shown when the knob or touchscreen has dropped (orange),
             // so a healthy panel stays clean.
@@ -75,6 +55,32 @@ struct ContentView: View {
             }
         }
         .animation(.easeOut(duration: 0.18), value: pad.switcherOpen)
+    }
+
+    @ViewBuilder private func appContent(_ pad: PadModel) -> some View {
+        if case .builtin("wallpaper")? = pad.currentDest {
+            WallpaperAppView().ignoresSafeArea()
+        } else if case .builtin("browser")? = pad.currentDest {
+            BrowserAppView().ignoresSafeArea()
+        } else if case .builtin(let b)? = pad.currentDest {
+            HomeBuiltinView(title: b.capitalized).ignoresSafeArea()
+        } else {
+            switch pad.extra {
+            case .monitor:
+                ZStack { Wallpaper().ignoresSafeArea(); SystemMonitorView() }
+            case .music:
+                MusicScreenView().ignoresSafeArea()
+            case .clock:
+                ClockScreenView().ignoresSafeArea()
+            case .none:
+                switch pad.currentKind {
+                case .grid:                            ScreenWebView(pad: pad).ignoresSafeArea()
+                case .app(let id) where id == "clock": ClockScreenView().ignoresSafeArea()
+                case .web(let url):                    WebDashboardView(urlString: url).ignoresSafeArea()
+                case .app:                             ScreenWebView(pad: pad).ignoresSafeArea()
+                }
+            }
+        }
     }
 }
 

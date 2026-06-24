@@ -126,6 +126,8 @@ final class PadModel: ObservableObject {
     @Published var draggingSlot: Int? = nil
     @Published var dragPoint: CGPoint? = nil
     private var longPressTimer: Timer?
+    private var edgeTimer: Timer?
+    private var edgeDir = 0
 
     func setHomePage(_ p: Int) { let n = max(1, HomeStore.shared.pages.count); homePage = min(max(0, p), n - 1) }
     func goHome() { onHome = true; editMode = false; draggingSlot = nil; dragPoint = nil; saveLastNav() }
@@ -193,7 +195,25 @@ final class PadModel: ObservableObject {
     }
 
     // MARK: Home edit ("jiggle") mode
-    func exitEditMode() { editMode = false; draggingSlot = nil; dragPoint = nil; longPressTimer?.invalidate() }
+    func exitEditMode() { editMode = false; draggingSlot = nil; dragPoint = nil; longPressTimer?.invalidate(); edgeTimer?.invalidate(); edgeDir = 0 }
+
+    /// Carry the dragged icon to the adjacent page (creating one past the last page).
+    private func performEdgeMove(_ dir: Int) {
+        guard editMode, let from = draggingSlot else { return }
+        let cur = homePage
+        var target = cur + dir
+        if target < 0 { edgeDir = 0; return }
+        if target >= HomeStore.shared.pages.count {
+            guard dir > 0 else { edgeDir = 0; return }
+            HomeStore.shared.addPage(); target = HomeStore.shared.pages.count - 1
+        }
+        guard let app = HomeStore.shared.app(page: cur, slot: from) else { edgeDir = 0; return }
+        HomeStore.shared.removeApp(page: cur, at: from)
+        HomeStore.shared.addApp(app, toPage: target)
+        homePage = target
+        draggingSlot = max(0, HomeStore.shared.pages[target].count - 1)
+        edgeDir = 0
+    }
 
     /// Slot index under a normalized point, using the same grid insets the home view lays out with.
     private func homeSlot(at p: CGPoint) -> Int {
@@ -231,6 +251,14 @@ final class PadModel: ObservableObject {
             let n = HomeStore.shared.pages[homePage].count
             let target = min(homeSlot(at: p), max(0, n - 1))
             if target != cur { HomeStore.shared.moveApp(page: homePage, from: cur, to: target); draggingSlot = target }
+            // Hold at the left/right edge → carry the icon to the adjacent page.
+            if p.x < 0.05 || p.x > 0.95 {
+                let dir = p.x < 0.05 ? -1 : 1
+                if edgeDir != dir {
+                    edgeDir = dir; edgeTimer?.invalidate()
+                    edgeTimer = Timer.scheduledTimer(withTimeInterval: 0.6, repeats: false) { [weak self] _ in self?.performEdgeMove(dir) }
+                }
+            } else { edgeDir = 0; edgeTimer?.invalidate() }
         } else if let s = homeStart, max(abs(p.x - s.x), abs(p.y - s.y)) > 0.03 {
             longPressTimer?.invalidate()       // moved → it's a swipe, not a hold
         }
@@ -238,6 +266,7 @@ final class PadModel: ObservableObject {
 
     private func homeEnded() {
         longPressTimer?.invalidate()
+        edgeTimer?.invalidate(); edgeDir = 0
         if editMode {
             if draggingSlot != nil { draggingSlot = nil; dragPoint = nil }            // drop
             else if let s = homeStart, HomeStore.shared.app(page: homePage, slot: homeSlot(at: s)) == nil { exitEditMode() }  // tap empty → exit
