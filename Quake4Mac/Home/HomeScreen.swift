@@ -122,6 +122,7 @@ final class HomeStore: ObservableObject {
             HomeApp(title: "Settings", symbol: "gearshape.fill",   tint: .gray,   dest: .builtin("settings")),
             HomeApp(title: "Monitor",  symbol: "cpu",              tint: .green,  dest: .panel("monitor")),
             HomeApp(title: "Music",    symbol: "music.note",       tint: .pink,   dest: .panel("music")),
+            HomeApp(title: "Weather",  symbol: "cloud.sun.fill",   tint: .cyan,   dest: .panel("weather")),
             HomeApp(title: "Wallpaper",symbol: "photo.fill",       tint: .blue,   dest: .builtin("wallpaper")),
             HomeApp(title: "Browser",  symbol: "globe",            tint: .purple, dest: .builtin("browser")),
         ]

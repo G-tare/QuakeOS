@@ -1,16 +1,23 @@
 // Wallpaper.swift — Quake4Mac
 //
-// The Quake panel's wallpaper (NOT the Mac's). Looping video wallpapers bundled under Wallpapers/.
+// The Quake panel's wallpaper (NOT the Mac's). Wallpapers are bundled under Wallpapers/.
 // WallpaperStore holds a global default + optional per-home-page overrides (persisted). WallpaperView
-// renders the chosen video behind the home screen; WallpaperAppView is the on-device picker.
+// renders the chosen media behind the home screen; WallpaperAppView is the on-device picker.
 
 import SwiftUI
+import AppKit
 import AVFoundation
+
+enum WallpaperMedia: Equatable {
+    case none
+    case video(file: String)
+    case image(file: String, ext: String)
+}
 
 struct WallpaperOption: Identifiable, Equatable {
     let id: String
     let title: String
-    let file: String?      // bundled mp4 base name; nil = solid black ("None")
+    let media: WallpaperMedia
 }
 
 final class WallpaperStore: ObservableObject {
@@ -20,12 +27,15 @@ final class WallpaperStore: ObservableObject {
     @Published var perPage: [Int: String] { didSet { savePerPage() } }
 
     static let options: [WallpaperOption] = [
-        WallpaperOption(id: "none",        title: "None",          file: nil),
-        WallpaperOption(id: "Aurora",      title: "Aurora",        file: "Aurora"),
-        WallpaperOption(id: "Matrix",      title: "Matrix",        file: "Matrix"),
-        WallpaperOption(id: "car",         title: "Car",           file: "car"),
-        WallpaperOption(id: "cityofnight", title: "City of Night", file: "cityofnight"),
-        WallpaperOption(id: "mountain",    title: "Mountain",      file: "mountain"),
+        WallpaperOption(id: "none",         title: "None",          media: .none),
+        WallpaperOption(id: "NeonHorizon",  title: "Neon Horizon",  media: .image(file: "NeonHorizon", ext: "png")),
+        WallpaperOption(id: "SignalGrid",   title: "Signal Grid",   media: .image(file: "SignalGrid", ext: "png")),
+        WallpaperOption(id: "PomeranianSpitz", title: "My Spitz",    media: .image(file: "MyPomeranianSpitz", ext: "png")),
+        WallpaperOption(id: "Aurora",       title: "Aurora",        media: .video(file: "Aurora")),
+        WallpaperOption(id: "Matrix",       title: "Matrix",        media: .video(file: "Matrix")),
+        WallpaperOption(id: "car",          title: "Car",           media: .video(file: "car")),
+        WallpaperOption(id: "cityofnight",  title: "City of Night", media: .video(file: "cityofnight")),
+        WallpaperOption(id: "mountain",     title: "Mountain",      media: .video(file: "mountain")),
     ]
 
     private init() {
@@ -50,11 +60,43 @@ struct WallpaperView: View {
     let id: String
     var body: some View {
         let opt = WallpaperStore.shared.option(id)
-        if let file = opt.file,
-           let url = Bundle.main.url(forResource: file, withExtension: "mp4", subdirectory: "Wallpapers") {
-            LoopingVideoView(url: url).ignoresSafeArea()
-        } else {
+        switch opt.media {
+        case .none:
             Color.black.ignoresSafeArea()
+        case .video(let file):
+            if let url = Bundle.main.url(forResource: file, withExtension: "mp4", subdirectory: "Wallpapers") {
+                LoopingVideoView(url: url).ignoresSafeArea()
+            } else {
+                Color.black.ignoresSafeArea()
+            }
+        case .image(let file, let ext):
+            if let url = Bundle.main.url(forResource: file, withExtension: ext, subdirectory: "Wallpapers") {
+                StaticImageWallpaperView(url: url).ignoresSafeArea()
+            } else {
+                Color.black.ignoresSafeArea()
+            }
+        }
+    }
+}
+
+struct StaticImageWallpaperView: View {
+    private let image: NSImage?
+
+    init(url: URL) {
+        image = NSImage(contentsOf: url)
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            if let image {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+            } else {
+                Color.black
+            }
         }
     }
 }
@@ -138,7 +180,7 @@ struct WallpaperAppView: View {
                         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .strokeBorder(on ? Color.cyan : Color.white.opacity(0.2), lineWidth: on ? 3 : 1))
                         .frame(height: geo.size.height * 0.16)
-                        .overlay(Image(systemName: opt.file == nil ? "circle.slash" : "photo.fill")
+                        .overlay(Image(systemName: iconName(for: opt.media))
                             .font(.system(size: geo.size.height * 0.05)).foregroundColor(.white.opacity(0.85)))
                     Text(opt.title).font(.system(size: geo.size.height * 0.035, weight: .medium))
                         .foregroundColor(.white.opacity(0.9)).lineLimit(1)
@@ -147,6 +189,14 @@ struct WallpaperAppView: View {
             }
         }
         .padding(.horizontal, geo.size.width * 0.02)
+    }
+
+    private func iconName(for media: WallpaperMedia) -> String {
+        switch media {
+        case .none: return "circle.slash"
+        case .video: return "play.rectangle.fill"
+        case .image: return "photo.fill"
+        }
     }
 
     // Device HID touches arrive via the router; treat a tap in the chip band as a selection.

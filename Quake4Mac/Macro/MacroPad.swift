@@ -346,6 +346,7 @@ final class PadModel: ObservableObject {
         let idx = row * Self.cols + col
         guard idx < current.tiles.count else { return }
         let tile = current.tiles[idx]
+        log("tile \(current.name)[\(idx)] \(tile.title) → \(tile.action.logDescription)")
         pressedTileID = tile.id
         lastFired = tile.title
         run(tile.action)
@@ -360,25 +361,59 @@ final class PadModel: ObservableObject {
         switch a {
         case .launchApp(let bid):
             if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bid) {
+                log("launch app \(bid)")
                 NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+            } else {
+                log("launch app failed: \(bid) not found")
             }
         case .openURL(let s):
-            if let u = URL(string: s) { NSWorkspace.shared.open(u) }
+            if let u = URL(string: s) {
+                log("open URL")
+                NSWorkspace.shared.open(u)
+            } else {
+                log("open URL failed: invalid URL")
+            }
         case .shell(let c):
-            let p = Process()
-            p.executableURL = URL(fileURLWithPath: "/bin/zsh")
-            p.arguments = ["-lc", c]
-            try? p.run()
+            runProcess("/bin/zsh", arguments: ["-lc", c], label: "shell")
         case .appleScript(let src):
-            var err: NSDictionary?
-            NSAppleScript(source: src)?.executeAndReturnError(&err)
+            runProcess("/usr/bin/osascript", arguments: ["-e", src], label: "applescript")
         case .luminance(let d):
             input.setLuminance(input.luminance + d)
         case .openPage(let name):
             if let i = pages.firstIndex(where: { $0.name == name }) { pageIndex = i }
         case .none:
-            break
+            log("tile action skipped: no action assigned")
         }
+    }
+
+    private func runProcess(_ executable: String, arguments: [String], label: String) {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: executable)
+        p.arguments = arguments
+        let err = Pipe()
+        p.standardError = err
+        p.terminationHandler = { [weak self] proc in
+            let data = err.fileHandleForReading.readDataToEndOfFile()
+            let detail = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+            DispatchQueue.main.async {
+                if proc.terminationStatus == 0 {
+                    self?.log("\(label) OK")
+                } else if detail.isEmpty {
+                    self?.log("\(label) failed with status \(proc.terminationStatus)")
+                } else {
+                    self?.log("\(label) failed with status \(proc.terminationStatus): \(detail)")
+                }
+            }
+        }
+        do {
+            try p.run()
+        } catch {
+            log("\(label) launch failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func log(_ s: String) {
+        FileHandle.standardError.write(("[Quake] " + s + "\n").data(using: .utf8)!)
     }
 
     // MARK: Default content (3 starter pages)
@@ -409,6 +444,14 @@ final class PadModel: ObservableObject {
         let volUp = "set volume output volume ((output volume of (get volume settings)) + 12)"
         let volDown = "set volume output volume ((output volume of (get volume settings)) - 12)"
         let muteToggle = "set volume output muted (not (output muted of (get volume settings)))"
+        let micToggle = """
+        set inputVol to input volume of (get volume settings)
+        if inputVol > 0 then
+            set volume input volume 0
+        else
+            set volume input volume 50
+        end if
+        """
 
         // System page — uses DecoKee's OWN icon PNGs (image:) mapped to real macOS actions.
         let system = PadPage(name: "System", tiles: [
@@ -427,7 +470,7 @@ final class PadModel: ObservableObject {
             Tile(title: "Mute",       symbol: "speaker.slash.fill",  tint: .purple, action: .appleScript(muteToggle), image: "buzzer_off"),
             Tile(title: "Mission",    symbol: "rectangle.3.group.fill", tint: .teal, action: .shell("open -a 'Mission Control'")),
             Tile(title: "Buzzer",     symbol: "bell.fill",      tint: .yellow, action: .none, image: "buzzer"),
-            Tile(title: "Mic",        symbol: "mic.fill",       tint: .purple, action: .none, image: "device_mic"),
+            Tile(title: "Mic",        symbol: "mic.fill",       tint: .purple, action: .appleScript(micToggle), image: "device_mic"),
         ])
 
         let web = PadPage(name: "Web", tiles: [
@@ -450,6 +493,20 @@ final class PadModel: ObservableObject {
         ])
 
         return [apps, system, web]
+    }
+}
+
+private extension PadAction {
+    var logDescription: String {
+        switch self {
+        case .launchApp(let bid): return "launchApp(\(bid))"
+        case .openURL:            return "openURL"
+        case .shell:              return "shell"
+        case .appleScript:        return "appleScript"
+        case .luminance(let d):   return "luminance(\(d))"
+        case .openPage(let name): return "openPage(\(name))"
+        case .none:               return "none"
+        }
     }
 }
 

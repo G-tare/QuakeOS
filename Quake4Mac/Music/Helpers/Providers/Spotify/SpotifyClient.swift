@@ -188,7 +188,11 @@ final class SpotifyClient: ObservableObject {
 
     // MARK: Control
 
-    func playPause() { isPlaying ? command("PUT", withDevice("/me/player/pause")) : command("PUT", withDevice("/me/player/play")) }
+    func playPause() {
+        let wasPlaying = isPlaying
+        isPlaying.toggle()
+        command("PUT", withDevice(wasPlaying ? "/me/player/pause" : "/me/player/play")) { self.fetchNowPlaying() }
+    }
     func next()      { command("POST", withDevice("/me/player/next")) { self.poll() } }
     func previous()  { command("POST", withDevice("/me/player/previous")) { self.poll() } }
 
