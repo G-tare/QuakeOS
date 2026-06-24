@@ -62,6 +62,8 @@ struct ContentView: View {
             WallpaperAppView().ignoresSafeArea()
         } else if case .builtin("browser")? = pad.currentDest {
             BrowserAppView().ignoresSafeArea()
+        } else if case .builtin("settings")? = pad.currentDest {
+            SettingsAppView(input: state.input).ignoresSafeArea()
         } else if case .builtin(let b)? = pad.currentDest {
             HomeBuiltinView(title: b.capitalized).ignoresSafeArea()
         } else {
