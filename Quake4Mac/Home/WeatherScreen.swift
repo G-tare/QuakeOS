@@ -39,7 +39,20 @@ struct WeatherScreenView: View {
     var interactive = true
     var zoom: CGFloat = 1
     @ObservedObject private var store = WeatherStore.shared
-    var body: some View { WeatherWebView(zoom: zoom, config: store.webConfig, interactive: interactive).ignoresSafeArea() }
+    @ObservedObject private var loc = LocationService.shared
+    var body: some View {
+        WeatherWebView(zoom: zoom, config: configJSON, interactive: interactive)
+            .ignoresSafeArea()
+            .onAppear { if interactive { loc.request() } }
+    }
+    private var configJSON: String {
+        var dict: [String: Any] = [
+            "locations": store.locations.map { ["name": $0.name, "lat": $0.lat, "lon": $0.lon] as [String: Any] },
+            "unit": store.unit, "useCurrent": store.useCurrent,
+        ]
+        if let la = loc.lat, let lo = loc.lon { dict["current"] = ["lat": la, "lon": lo, "name": loc.cityName ?? "Current Location"] }
+        return (try? JSONSerialization.data(withJSONObject: dict)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+    }
 }
 
 struct WeatherWebView: NSViewRepresentable {

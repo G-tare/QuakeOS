@@ -71,7 +71,7 @@
   <div id="stage"><div class="err">Loading weather…</div></div>
 <script>
 (function(){
-  var cfg = { locations:[], unit:'fahrenheit', useCurrent:true };
+  var cfg = { locations:[], unit:'fahrenheit', useCurrent:true, current:null };
   var list = [], idx = 0;
 
   function rnd(n){ return Math.round(n); }
@@ -121,8 +121,12 @@
   async function buildList(){
     list=[];
     if(cfg.useCurrent){
-      try{ var ip=await fetch('https://ipapi.co/json/').then(r=>r.json());
-        if(ip && ip.latitude!=null) list.push({name: ip.city||'Current Location', lat:ip.latitude, lon:ip.longitude, current:true}); }catch(e){}
+      if(cfg.current && cfg.current.lat!=null){
+        list.push({name: cfg.current.name||'Current Location', lat:cfg.current.lat, lon:cfg.current.lon, current:true});
+      } else {
+        try{ var ip=await fetch('https://ipapi.co/json/').then(r=>r.json());
+          if(ip && ip.latitude!=null) list.push({name: ip.city||'Current Location', lat:ip.latitude, lon:ip.longitude, current:true}); }catch(e){}
+      }
     }
     (cfg.locations||[]).forEach(function(l){ list.push({name:l.name, lat:l.lat, lon:l.lon}); });
     if(!list.length) list.push({name:'New York', lat:40.7128, lon:-74.006});
@@ -219,7 +223,7 @@
   }
 
   window.WEATHER = {
-    set: async function(o){ if(!o) return; if(o.locations) cfg.locations=o.locations; if('unit' in o) cfg.unit=o.unit; if('useCurrent' in o) cfg.useCurrent=!!o.useCurrent; await buildList(); idx=0; load(); },
+    set: async function(o){ if(!o) return; if(o.locations) cfg.locations=o.locations; if('unit' in o) cfg.unit=o.unit; if('useCurrent' in o) cfg.useCurrent=!!o.useCurrent; if('current' in o) cfg.current=o.current; await buildList(); idx=0; load(); },
     flip: function(d){ if(list.length<2) return; idx=(idx+(d>0?1:-1)+list.length)%list.length; load(); }
   };
   buildList().then(load);

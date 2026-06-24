@@ -39,6 +39,7 @@
 		AA0000000000000000000073 /* SettingsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000072 /* SettingsApp.swift */; };
 		AA0000000000000000000075 /* WeatherScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000074 /* WeatherScreen.swift */; };
 		AA0000000000000000000077 /* GeoSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000076 /* GeoSearch.swift */; };
+		AA0000000000000000000079 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000078 /* LocationService.swift */; };
 		AA0000000000000000000031 /* SpotifyAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000030 /* SpotifyAuth.swift */; };
 		AA0000000000000000000033 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000032 /* SettingsView.swift */; };
 		AA0000000000000000000035 /* SpotifyClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000034 /* SpotifyClient.swift */; };
@@ -81,6 +82,7 @@
 		AA0000000000000000000072 /* SettingsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsApp.swift; sourceTree = "<group>"; };
 		AA0000000000000000000074 /* WeatherScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherScreen.swift; sourceTree = "<group>"; };
 		AA0000000000000000000076 /* GeoSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeoSearch.swift; sourceTree = "<group>"; };
+		AA0000000000000000000078 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
 		AA0000000000000000000030 /* SpotifyAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyAuth.swift; sourceTree = "<group>"; };
 		AA0000000000000000000032 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		AA0000000000000000000034 /* SpotifyClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyClient.swift; sourceTree = "<group>"; };
@@ -309,6 +311,7 @@
 				AA0000000000000000000072 /* SettingsApp.swift */,
 				AA0000000000000000000074 /* WeatherScreen.swift */,
 				AA0000000000000000000076 /* GeoSearch.swift */,
+				AA0000000000000000000078 /* LocationService.swift */,
 			);
 			path = Home;
 			sourceTree = "<group>";
@@ -408,6 +411,7 @@
 				AA0000000000000000000073 /* SettingsApp.swift in Sources */,
 				AA0000000000000000000075 /* WeatherScreen.swift in Sources */,
 				AA0000000000000000000077 /* GeoSearch.swift in Sources */,
+				AA0000000000000000000079 /* LocationService.swift in Sources */,
 				AA0000000000000000000031 /* SpotifyAuth.swift in Sources */,
 				AA0000000000000000000033 /* SettingsView.swift in Sources */,
 				AA0000000000000000000035 /* SpotifyClient.swift in Sources */,
@@ -479,6 +483,7 @@
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Shows your connected Bluetooth devices on the Quake panel.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Uses your location to show local weather on the Quake panel.";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -505,6 +510,7 @@
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Shows your connected Bluetooth devices on the Quake panel.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Uses your location to show local weather on the Quake panel.";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
