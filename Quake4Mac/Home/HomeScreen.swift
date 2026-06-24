@@ -140,9 +140,11 @@ enum HomeLayoutMetrics {
 
 struct HomeScreenView: View {
     @ObservedObject var store = HomeStore.shared
-    let page: Int
+    @ObservedObject var pad: PadModel
+    @State private var jiggle = false
 
     private let M = HomeLayoutMetrics.self
+    private var page: Int { pad.homePage }
 
     var body: some View {
         GeometryReader { geo in
@@ -166,7 +168,7 @@ struct HomeScreenView: View {
                             ForEach(0..<M.cols, id: \.self) { c in
                                 let idx = r * M.cols + c
                                 Group {
-                                    if idx < apps.count { iconCell(apps[idx], size: size) } else { Color.clear }
+                                    if idx < apps.count { iconCell(apps[idx], size: size, index: idx) } else { Color.clear }
                                 }
                                 .frame(width: cellW, height: cellH)
                             }
@@ -175,10 +177,22 @@ struct HomeScreenView: View {
                 }
                 .frame(width: gridW, height: gridH)
                 .position(x: w / 2, y: h * M.topFrac + gridH / 2)
+                .animation(.spring(response: 0.28, dampingFraction: 0.8), value: apps.map { $0.id })
 
                 dots.position(x: w / 2, y: h * (1 - M.bottomFrac / 2))
+
+                // Lifted icon that follows the finger while dragging in edit mode.
+                if pad.editMode, let ds = pad.draggingSlot, let dp = pad.dragPoint, ds < apps.count {
+                    iconGlyph(apps[ds], size: size * 1.15)
+                        .position(x: dp.x * w, y: dp.y * h)
+                        .shadow(color: .black.opacity(0.5), radius: 12)
+                }
             }
             .frame(width: w, height: h)
+            .onChange(of: pad.editMode) { on in
+                if on { withAnimation(.easeInOut(duration: 0.13).repeatForever(autoreverses: true)) { jiggle = true } }
+                else { jiggle = false }
+            }
         }
     }
 
@@ -204,7 +218,7 @@ struct HomeScreenView: View {
         return f.string(from: d)
     }
 
-    private func iconCell(_ app: HomeApp, size: CGFloat) -> some View {
+    private func iconGlyph(_ app: HomeApp, size: CGFloat) -> some View {
         VStack(spacing: size * 0.14) {
             RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
                 .fill(app.tint.opacity(0.92))
@@ -217,7 +231,16 @@ struct HomeScreenView: View {
                 .font(.system(size: size * 0.2, weight: .medium))
                 .foregroundColor(.white.opacity(0.9)).lineLimit(1)
         }
-        .frame(maxHeight: .infinity, alignment: .center)
+    }
+
+    private func iconCell(_ app: HomeApp, size: CGFloat, index: Int) -> some View {
+        let dragging = pad.editMode && pad.draggingSlot == index
+        let base: Double = index % 2 == 0 ? 1.7 : -1.7
+        let angle: Double = (pad.editMode && !dragging) ? (jiggle ? base : -base) : 0
+        return iconGlyph(app, size: size)
+            .opacity(dragging ? 0.25 : 1)          // the lifted icon shows as the floating copy
+            .rotationEffect(.degrees(angle))
+            .frame(maxHeight: .infinity, alignment: .center)
     }
 
     private var dots: some View {

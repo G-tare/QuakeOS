@@ -121,9 +121,14 @@ final class PadModel: ObservableObject {
     private var switStart: CGPoint?
     private var switLast: CGPoint?
     private var switcherTimer: Timer?
+    // Home edit ("jiggle") mode: hold an icon to enter, drag to rearrange, knob/tap-empty to exit.
+    @Published var editMode = false
+    @Published var draggingSlot: Int? = nil
+    @Published var dragPoint: CGPoint? = nil
+    private var longPressTimer: Timer?
 
     func setHomePage(_ p: Int) { let n = max(1, HomeStore.shared.pages.count); homePage = min(max(0, p), n - 1) }
-    func goHome() { onHome = true; saveLastNav() }
+    func goHome() { onHome = true; editMode = false; draggingSlot = nil; dragPoint = nil; saveLastNav() }
 
     func openApp(_ dest: AppDest) {
         switch dest {
@@ -136,6 +141,7 @@ final class PadModel: ObservableObject {
         currentDest = dest
         onHome = false
         switcherOpen = false
+        editMode = false; draggingSlot = nil; dragPoint = nil
         switcherTimer?.invalidate()
         recents.removeAll { $0 == dest }            // move to most-recent (end)
         recents.append(dest)
@@ -186,6 +192,61 @@ final class PadModel: ObservableObject {
         if let app = HomeStore.shared.app(page: homePage, slot: row * M.cols + col) { openApp(app.dest) }
     }
 
+    // MARK: Home edit ("jiggle") mode
+    func exitEditMode() { editMode = false; draggingSlot = nil; dragPoint = nil; longPressTimer?.invalidate() }
+
+    /// Slot index under a normalized point, using the same grid insets the home view lays out with.
+    private func homeSlot(at p: CGPoint) -> Int {
+        let M = HomeLayoutMetrics.self
+        let gx = (p.x - M.sideFrac) / (1 - 2 * M.sideFrac)
+        let gy = (p.y - M.topFrac) / (1 - M.topFrac - M.bottomFrac)
+        let col = min(max(Int(gx * CGFloat(M.cols)), 0), M.cols - 1)
+        let row = min(max(Int(gy * CGFloat(M.rows)), 0), M.rows - 1)
+        return row * M.cols + col
+    }
+
+    private func homeBegan(_ p: CGPoint) {
+        homeStart = p; homeLast = p
+        if editMode {
+            let s = homeSlot(at: p)
+            if HomeStore.shared.app(page: homePage, slot: s) != nil { draggingSlot = s; dragPoint = p }
+        } else {
+            longPressTimer?.invalidate()
+            longPressTimer = Timer.scheduledTimer(withTimeInterval: 0.55, repeats: false) { [weak self] _ in self?.beginEditDrag() }
+        }
+    }
+
+    private func beginEditDrag() {
+        guard onHome, let s = homeStart else { return }
+        editMode = true
+        let slot = homeSlot(at: s)
+        if HomeStore.shared.app(page: homePage, slot: slot) != nil { draggingSlot = slot; dragPoint = s }
+    }
+
+    private func homeMoved(_ p: CGPoint) {
+        homeLast = p
+        if editMode {
+            guard let cur = draggingSlot, HomeStore.shared.pages.indices.contains(homePage) else { return }
+            dragPoint = p
+            let n = HomeStore.shared.pages[homePage].count
+            let target = min(homeSlot(at: p), max(0, n - 1))
+            if target != cur { HomeStore.shared.moveApp(page: homePage, from: cur, to: target); draggingSlot = target }
+        } else if let s = homeStart, max(abs(p.x - s.x), abs(p.y - s.y)) > 0.03 {
+            longPressTimer?.invalidate()       // moved → it's a swipe, not a hold
+        }
+    }
+
+    private func homeEnded() {
+        longPressTimer?.invalidate()
+        if editMode {
+            if draggingSlot != nil { draggingSlot = nil; dragPoint = nil }            // drop
+            else if let s = homeStart, HomeStore.shared.app(page: homePage, slot: homeSlot(at: s)) == nil { exitEditMode() }  // tap empty → exit
+            homeStart = nil; homeLast = nil
+        } else {
+            homeTouchEnded()
+        }
+    }
+
     /// Resolve the launch screen from the General "open at launch" setting.
     func applyStartup() {
         let target = UserDefaults.standard.string(forKey: "startup.target") ?? "home"
@@ -229,22 +290,23 @@ final class PadModel: ObservableObject {
         case .knobClockwise:        openOrMoveSwitcher(+1)   // open / scrub the recents app switcher
         case .knobCounterClockwise: openOrMoveSwitcher(-1)
         case .knobPress:
-            if switcherOpen { commitSwitcher() }            // open the highlighted app
+            if editMode { exitEditMode() }                  // exit jiggle mode (like iPhone home)
+            else if switcherOpen { commitSwitcher() }       // open the highlighted app
             else if onHome { setHomePage(0) }
             else { goHome() }                               // home button
         case .touchBegan(let p):
             if switcherOpen { switStart = p; switLast = p }
-            else if onHome { homeStart = p; homeLast = p }
+            else if onHome { homeBegan(p) }
             else if inMacroGrid { activate(at: p) }
             else { ScreenTouchRouter.shared.onBegan?(p) }
         case .touchEnded:
             pressedTileID = nil
             if switcherOpen { endSwitcherTouch() }
-            else if onHome { homeTouchEnded() }
+            else if onHome { homeEnded() }
             else if !inMacroGrid { ScreenTouchRouter.shared.onEnded?() }
         case .touchMoved(let p):
             if switcherOpen { switLast = p }
-            else if onHome { homeLast = p }
+            else if onHome { homeMoved(p) }
             else if !inMacroGrid { ScreenTouchRouter.shared.onMoved?(p) }
         }
     }

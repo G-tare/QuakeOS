@@ -26,7 +26,7 @@ struct ContentView: View {
 
             if pad.onHome {
                 WallpaperView(id: wallpaper.id(forPage: pad.homePage)).ignoresSafeArea()
-                HomeScreenView(page: pad.homePage).ignoresSafeArea()
+                HomeScreenView(pad: pad).ignoresSafeArea()
             } else if case .builtin("wallpaper")? = pad.currentDest {
                 WallpaperAppView().ignoresSafeArea()
             } else if case .builtin("browser")? = pad.currentDest {
