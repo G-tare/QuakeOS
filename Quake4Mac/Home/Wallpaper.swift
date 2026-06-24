@@ -38,6 +38,7 @@ final class WallpaperStore: ObservableObject {
     }
 
     func id(forPage p: Int) -> String { perPage[p] ?? defaultID }
+    func replacePerPage(_ m: [Int: String]) { perPage = m }   // commit the layout editor's per-page wallpaper draft
     func option(_ id: String) -> WallpaperOption { WallpaperStore.options.first { $0.id == id } ?? WallpaperStore.options[0] }
     func setDefault(_ id: String) { defaultID = id }
     func setPage(_ p: Int, _ id: String?) { if let id { perPage[p] = id } else { perPage.removeValue(forKey: p) } }

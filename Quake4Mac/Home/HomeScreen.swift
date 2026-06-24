@@ -98,6 +98,9 @@ final class HomeStore: ObservableObject {
         let a = pages[i].remove(at: j); pages[i].insert(a, at: k)
     }
 
+    /// Commit a whole new layout (the editor's saved draft) → device + disk.
+    func replace(_ newPages: [[HomeApp]]) { pages = newPages }
+
     /// Every app you can drop onto a home page (built-ins, panels, and your macro pages).
     static func catalog() -> [HomeApp] {
         var out: [HomeApp] = [
@@ -128,6 +131,44 @@ final class HomeStore: ObservableObject {
         ]
         return [osBasics, yourPages]
     }
+}
+
+// Draft/Save session for the Home Layout editor. Edits go to a draft shown in the live hero
+// preview; the Quake home only changes when you Save (commit → HomeStore + WallpaperStore).
+final class HomeEditSession: ObservableObject {
+    static let shared = HomeEditSession()
+    @Published var draft: [[HomeApp]] = []
+    @Published var wallpaperDraft: [Int: String] = [:]
+    @Published var editPage = 0
+    @Published var dirty = false
+    private init() {}
+
+    func begin() {
+        draft = HomeStore.shared.pages
+        wallpaperDraft = WallpaperStore.shared.perPage
+        editPage = min(editPage, max(0, draft.count - 1))
+        dirty = false
+    }
+    func save() { HomeStore.shared.replace(draft); WallpaperStore.shared.replacePerPage(wallpaperDraft); dirty = false }
+    func revert() { begin() }
+
+    func app(page i: Int, slot j: Int) -> HomeApp? {
+        guard draft.indices.contains(i), draft[i].indices.contains(j) else { return nil }
+        return draft[i][j]
+    }
+    func insert(destKey key: String, page i: Int, at k: Int) {
+        guard draft.indices.contains(i), let a = HomeStore.catalog().first(where: { $0.dest.storageKey == key }) else { return }
+        draft[i].insert(HomeApp(title: a.title, symbol: a.symbol, tint: a.tint, dest: a.dest), at: min(max(0, k), draft[i].count)); dirty = true
+    }
+    func move(page i: Int, from j: Int, to k: Int) {
+        guard draft.indices.contains(i), draft[i].indices.contains(j), k >= 0, k < draft[i].count else { return }
+        let a = draft[i].remove(at: j); draft[i].insert(a, at: k); dirty = true
+    }
+    func remove(page i: Int, at j: Int) { guard draft.indices.contains(i), draft[i].indices.contains(j) else { return }; draft[i].remove(at: j); dirty = true }
+    func addPage() { draft.append([]); editPage = draft.count - 1; dirty = true }
+    func removePage(_ i: Int) { guard draft.count > 1, draft.indices.contains(i) else { return }; draft.remove(at: i); wallpaperDraft[i] = nil; editPage = min(editPage, draft.count - 1); dirty = true }
+    func wallpaper(page i: Int) -> String { wallpaperDraft[i] ?? "default" }
+    func setWallpaper(page i: Int, _ id: String?) { wallpaperDraft[i] = (id == "default" ? nil : id); dirty = true }
 }
 
 // Shared layout fractions so the visual grid and PadModel's touch hit-testing agree exactly.
@@ -305,25 +346,22 @@ struct AppSwitcherView: View {
 // MARK: - Home Layout editor (Mac settings → Layout)
 
 struct HomeLayoutView: View {
-    @ObservedObject private var store = HomeStore.shared
-    @ObservedObject private var wp = WallpaperStore.shared
-    @State private var editPage = 0
-
-    private let cols = 8, rows = 2
-    private let pvW: CGFloat = 820
-    private var pvH: CGFloat { pvW / 4 }     // 1920×480 → 4:1
+    @ObservedObject private var s = HomeEditSession.shared
     private let lib = [GridItem(.adaptive(minimum: 86, maximum: 120), spacing: 12, alignment: .top)]
 
     private var wallpaperOptions: [(String, String)] {
         [("default", "Default (global)")] + WallpaperStore.options.map { ($0.id, $0.title) }
     }
-    private var page: Int { min(editPage, max(0, store.pages.count - 1)) }
+    private var page: Int { min(s.editPage, max(0, s.draft.count - 1)) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            SettingsHeader(title: "Layout",
-                           subtitle: "Drag an app from the library onto your home screen. Arrows switch pages; drag an icon to the trash to remove it.")
-            previewRow
+            HStack(alignment: .top) {
+                SettingsHeader(title: "Layout",
+                               subtitle: "Drag an app from the library onto the live home screen above. Arrows switch pages; drag an icon to the trash to remove it. Changes hit the Quake only when you Save.")
+                Spacer(minLength: 16)
+                saveBar
+            }
             controlsRow
             NeonCard("Apps — drag onto the home screen above") {
                 LazyVGrid(columns: lib, spacing: 12) {
@@ -336,79 +374,35 @@ struct HomeLayoutView: View {
             trashZone
             Spacer()
         }
-        .onChange(of: store.pages.count) { _ in if editPage > store.pages.count - 1 { editPage = max(0, store.pages.count - 1) } }
+        .onAppear { s.begin() }
     }
 
-    // MARK: live preview (drop target) + page arrows
-
-    private var previewRow: some View {
-        HStack(spacing: 14) {
-            arrow("chevron.left", enabled: page > 0) { editPage = max(0, page - 1) }
-            previewCanvas
-            arrow("chevron.right", enabled: page < store.pages.count - 1) { editPage = min(store.pages.count - 1, page + 1) }
+    private var saveBar: some View {
+        HStack(spacing: 10) {
+            if s.dirty {
+                Text("Unsaved").font(.system(size: 10, weight: .semibold)).foregroundColor(NeonTheme.magenta)
+                    .padding(.horizontal, 7).padding(.vertical, 3).background(Capsule().fill(NeonTheme.magenta.opacity(0.14)))
+            }
+            barButton("Revert", NeonTheme.textSecondary, enabled: s.dirty) { s.revert() }
+            barButton("Save to Quake", NeonTheme.cyan, enabled: s.dirty) { s.save() }
         }
-        .frame(maxWidth: .infinity)
     }
-
-    private func arrow(_ icon: String, enabled: Bool, _ action: @escaping () -> Void) -> some View {
+    private func barButton(_ title: String, _ tint: Color, enabled: Bool, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: icon).font(.system(size: 22, weight: .semibold))
-                .foregroundColor(enabled ? NeonTheme.cyan : NeonTheme.textTertiary)
-                .frame(width: 40, height: 40)
-                .background(Circle().fill(NeonTheme.panel)).overlay(Circle().strokeBorder(NeonTheme.stroke, lineWidth: 1))
+            Text(title).font(.system(size: 12, weight: .semibold)).foregroundColor(enabled ? tint : NeonTheme.textTertiary)
+                .padding(.horizontal, 14).padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(tint.opacity(enabled ? 0.14 : 0.05)))
+                .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(tint.opacity(enabled ? 0.4 : 0.12), lineWidth: 1))
         }.buttonStyle(.plain).disabled(!enabled)
     }
 
-    private var previewCanvas: some View {
-        let cellW = pvW / CGFloat(cols), cellH = pvH / CGFloat(rows)
-        let size = min(cellW, cellH) * 0.52
-        return ZStack {
-            WallpaperView(id: wp.id(forPage: page))
-            Color.black.opacity(0.25)
-            VStack(spacing: 0) {
-                ForEach(0..<rows, id: \.self) { r in
-                    HStack(spacing: 0) {
-                        ForEach(0..<cols, id: \.self) { c in cell(r * cols + c, cellW: cellW, cellH: cellH, size: size) }
-                    }
-                }
-            }
-        }
-        .frame(width: pvW, height: pvH)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(NeonTheme.stroke, lineWidth: 1))
-    }
-
-    @ViewBuilder private func cell(_ k: Int, cellW: CGFloat, cellH: CGFloat, size: CGFloat) -> some View {
-        let apps = store.pages.indices.contains(page) ? store.pages[page] : []
-        let app = apps.indices.contains(k) ? apps[k] : nil
-        ZStack {
-            if let app { iconTile(app, size: size).draggable("idx:\(k)") }
-        }
-        .frame(width: cellW, height: cellH)
-        .contentShape(Rectangle())
-        .dropDestination(for: String.self) { items, _ in handleDrop(items, cell: k) }
-    }
-
-    private func handleDrop(_ items: [String], cell k: Int) -> Bool {
-        guard let s = items.first else { return false }
-        let count = store.pages.indices.contains(page) ? store.pages[page].count : 0
-        if s.hasPrefix("lib:") {
-            let key = String(s.dropFirst(4))
-            guard let a = HomeStore.catalog().first(where: { $0.dest.storageKey == key }) else { return false }
-            store.insertApp(a, page: page, at: min(k, count)); return true
-        } else if s.hasPrefix("idx:"), let j = Int(s.dropFirst(4)) {
-            store.moveApp(page: page, from: j, to: min(k, max(0, count - 1))); return true
-        }
-        return false
-    }
-
-    // MARK: controls + library + trash
-
     private var controlsRow: some View {
         HStack(spacing: 12) {
-            Text("Page \(page + 1) of \(store.pages.count)").font(.system(size: 12)).foregroundColor(NeonTheme.textSecondary)
+            arrow("chevron.left", enabled: page > 0) { s.editPage = max(0, page - 1) }
+            arrow("chevron.right", enabled: page < s.draft.count - 1) { s.editPage = min(s.draft.count - 1, page + 1) }
+            Text("Page \(page + 1) of \(s.draft.count)").font(.system(size: 12)).foregroundColor(NeonTheme.textSecondary)
             HStack(spacing: 6) {
-                ForEach(0..<store.pages.count, id: \.self) { i in
+                ForEach(0..<s.draft.count, id: \.self) { i in
                     Circle().fill(i == page ? NeonTheme.cyan : Color.white.opacity(0.3)).frame(width: 7, height: 7)
                 }
             }
@@ -416,15 +410,24 @@ struct HomeLayoutView: View {
             Picker("", selection: wallpaperBinding(page)) {
                 ForEach(wallpaperOptions, id: \.0) { Text($0.1).tag($0.0) }
             }.labelsHidden().pickerStyle(.menu).frame(width: 190)
-            Button { store.addPage(); editPage = store.pages.count - 1 } label: {
+            Button { s.addPage() } label: {
                 Label("Add page", systemImage: "plus").font(.system(size: 12, weight: .medium)).foregroundColor(NeonTheme.cyan)
             }.buttonStyle(.plain)
-            if store.pages.count > 1 {
-                Button { store.removePage(page); editPage = min(page, store.pages.count - 1) } label: {
+            if s.draft.count > 1 {
+                Button { s.removePage(page) } label: {
                     Label("Remove page", systemImage: "trash").font(.system(size: 12)).foregroundColor(NeonTheme.magenta)
                 }.buttonStyle(.plain)
             }
         }
+    }
+
+    private func arrow(_ icon: String, enabled: Bool, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon).font(.system(size: 16, weight: .semibold))
+                .foregroundColor(enabled ? NeonTheme.cyan : NeonTheme.textTertiary)
+                .frame(width: 30, height: 30)
+                .background(Circle().fill(NeonTheme.panel)).overlay(Circle().strokeBorder(NeonTheme.stroke, lineWidth: 1))
+        }.buttonStyle(.plain).disabled(!enabled)
     }
 
     private var trashZone: some View {
@@ -436,17 +439,8 @@ struct HomeLayoutView: View {
         .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white.opacity(0.03)))
         .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(NeonTheme.stroke, style: StrokeStyle(lineWidth: 1, dash: [5])))
         .dropDestination(for: String.self) { items, _ in
-            guard let s = items.first, s.hasPrefix("idx:"), let j = Int(s.dropFirst(4)) else { return false }
-            store.removeApp(page: page, at: j); return true
-        }
-    }
-
-    private func iconTile(_ app: HomeApp, size: CGFloat) -> some View {
-        VStack(spacing: size * 0.12) {
-            RoundedRectangle(cornerRadius: size * 0.24, style: .continuous).fill(app.tint.opacity(0.92))
-                .frame(width: size, height: size)
-                .overlay(Image(systemName: app.symbol).font(.system(size: size * 0.44, weight: .medium)).foregroundColor(.white))
-            Text(app.title).font(.system(size: size * 0.2, weight: .medium)).foregroundColor(.white.opacity(0.9)).lineLimit(1)
+            guard let str = items.first, str.hasPrefix("idx:"), let j = Int(str.dropFirst(4)) else { return false }
+            s.remove(page: page, at: j); return true
         }
     }
 
@@ -464,8 +458,7 @@ struct HomeLayoutView: View {
     }
 
     private func wallpaperBinding(_ p: Int) -> Binding<String> {
-        Binding(get: { wp.perPage[p] ?? "default" },
-                set: { wp.setPage(p, $0 == "default" ? nil : $0) })
+        Binding(get: { s.wallpaper(page: p) }, set: { s.setWallpaper(page: p, $0) })
     }
 }
 

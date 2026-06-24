@@ -17,6 +17,7 @@ struct QuakeStripPreview: View {
     @ObservedObject private var live = RGBLiveState.shared      // what's ACTUALLY on the knob now
     @ObservedObject private var store = PadStore.shared
     @ObservedObject private var session = TileEditSession.shared
+    @ObservedObject private var homeSession = HomeEditSession.shared
 
     // Device panel logical size + the on-screen strip size (kept exactly 4:1). Height + whether the
     // knob shows follow the "Live preview" setting (Bar = compact strip only, Hero = full, Dock = mid).
@@ -91,6 +92,8 @@ struct QuakeStripPreview: View {
             ClockScreenView(interactive: false, zoom: scale)
                 .frame(width: stripW, height: stripH)
                 .modifier(StripChrome())
+        } else if pageName == "Layout" {
+            homeEditStrip
         } else {
             panelPlaceholder
         }
@@ -101,6 +104,56 @@ struct QuakeStripPreview: View {
             content
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(NeonTheme.stroke, lineWidth: 1))
+        }
+    }
+
+    // The home springboard rendered in the hero strip as a live, editable drop target (draft).
+    private var homeEditStrip: some View {
+        let M = HomeLayoutMetrics.self
+        let page = min(homeSession.editPage, max(0, homeSession.draft.count - 1))
+        let apps = homeSession.draft.indices.contains(page) ? homeSession.draft[page] : []
+        let gridW = stripW * (1 - 2 * M.sideFrac), gridH = stripH * (1 - M.topFrac - M.bottomFrac)
+        let cellW = gridW / CGFloat(M.cols), cellH = gridH / CGFloat(M.rows)
+        let size = min(cellW, cellH) * 0.5
+        return ZStack(alignment: .topLeading) {
+            WallpaperView(id: homeSession.wallpaperDraft[page] ?? WallpaperStore.shared.defaultID)
+            Color.black.opacity(0.25)
+            VStack(spacing: 0) {
+                ForEach(0..<M.rows, id: \.self) { r in
+                    HStack(spacing: 0) {
+                        ForEach(0..<M.cols, id: \.self) { c in homeCell(r * M.cols + c, page: page, apps: apps, cellW: cellW, cellH: cellH, size: size) }
+                    }
+                }
+            }
+            .frame(width: gridW, height: gridH)
+            .position(x: stripW / 2, y: stripH * M.topFrac + gridH / 2)
+        }
+        .frame(width: stripW, height: stripH)
+        .modifier(StripChrome())
+    }
+
+    @ViewBuilder private func homeCell(_ k: Int, page: Int, apps: [HomeApp], cellW: CGFloat, cellH: CGFloat, size: CGFloat) -> some View {
+        let app = apps.indices.contains(k) ? apps[k] : nil
+        ZStack {
+            if let app { homeIcon(app, size: size).draggable("idx:\(k)") }
+        }
+        .frame(width: cellW, height: cellH)
+        .contentShape(Rectangle())
+        .dropDestination(for: String.self) { items, _ in
+            guard let s = items.first else { return false }
+            let count = homeSession.draft.indices.contains(page) ? homeSession.draft[page].count : 0
+            if s.hasPrefix("lib:") { homeSession.insert(destKey: String(s.dropFirst(4)), page: page, at: min(k, count)); return true }
+            if s.hasPrefix("idx:"), let j = Int(s.dropFirst(4)) { homeSession.move(page: page, from: j, to: min(k, max(0, count - 1))); return true }
+            return false
+        }
+    }
+
+    private func homeIcon(_ app: HomeApp, size: CGFloat) -> some View {
+        VStack(spacing: size * 0.14) {
+            RoundedRectangle(cornerRadius: size * 0.24, style: .continuous).fill(app.tint.opacity(0.92))
+                .frame(width: size, height: size)
+                .overlay(Image(systemName: app.symbol).font(.system(size: size * 0.44, weight: .medium)).foregroundColor(.white))
+            Text(app.title).font(.system(size: size * 0.2, weight: .medium)).foregroundColor(.white.opacity(0.9)).lineLimit(1)
         }
     }
 
