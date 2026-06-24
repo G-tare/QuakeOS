@@ -18,9 +18,11 @@ final class MusicModel: ObservableObject {
     private var preferred: String? = UserDefaults.standard.string(forKey: "music.service")
 
     init() {
-        spotify.objectWillChange.sink { [weak self] _ in self?.refresh() }.store(in: &bag)
-        np.objectWillChange.sink { [weak self] _ in self?.refresh() }.store(in: &bag)
-        lyrics.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &bag)
+        // @Published emits objectWillChange before the value changes; refresh on the next main
+        // turn so snapshots read the new play/pause/progress state, not the stale one.
+        spotify.objectWillChange.sink { [weak self] _ in DispatchQueue.main.async { self?.refresh() } }.store(in: &bag)
+        np.objectWillChange.sink { [weak self] _ in DispatchQueue.main.async { self?.refresh() } }.store(in: &bag)
+        lyrics.objectWillChange.sink { [weak self] _ in DispatchQueue.main.async { self?.objectWillChange.send() } }.store(in: &bag)
     }
 
     func start() {
